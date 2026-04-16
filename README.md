@@ -21,6 +21,24 @@ It currently includes two versions:
 
 👉 See `/ahk`
 
+⚠️ **Important (ExifTool required)**
+
+The AutoHotkey version depends on ExifTool and will **not work without it**.
+
+You must either:
+
+1. Download ExifTool from the official website and place `exiftool.exe` in the **same folder** as the compiled `.exe`
+
+**or**
+
+2. Install ExifTool and make it available in your system **PATH**
+
+👉 https://exiftool.org/
+
+If ExifTool is not found, metadata operations will fail.
+
+👉 See `/ahk`
+
 ## Why this project exists
 
 Film scans often lose useful metadata such as:

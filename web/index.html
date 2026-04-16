@@ -1,0 +1,2159 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Film EXIF Tagger</title>
+    <style>
+        :root {
+            --bg: #0f0f14;
+            --panel: #1a1a24;
+            --card: rgba(255, 255, 255, 0.05);
+            --card-2: rgba(255, 255, 255, 0.08);
+            --border: rgba(255, 255, 255, 0.1);
+            --text: #f5f7fb;
+            --muted: rgba(245, 247, 251, 0.55);
+            --muted-2: rgba(245, 247, 251, 0.35);
+            --accent: rgba(139, 92, 246, 0.26);
+            --accent-border: rgba(139, 92, 246, 0.35);
+            --accent-text: #efe9ff;
+            --success: rgba(52, 211, 153, 0.16);
+            --success-border: rgba(52, 211, 153, 0.25);
+            --success-text: #9ff5d1;
+            --staged: rgba(251, 191, 36, 0.18);
+            --staged-border: rgba(251, 191, 36, 0.35);
+            --staged-text: #fde68a;
+            --radius: 18px;
+            --radius-lg: 22px;
+            --shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+            --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font);
+        }
+
+        button,
+        input,
+        select {
+            font: inherit;
+        }
+
+        .app {
+            min-height: 100vh;
+        }
+
+        .topbar {
+            border-bottom: 1px solid var(--border);
+            background: var(--panel);
+        }
+
+        .topbar-inner,
+        .content {
+            width: min(1440px, calc(100% - 32px));
+            margin: 0 auto;
+        }
+
+        .topbar-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 22px 0;
+        }
+
+        .title {
+            margin: 0;
+            font-size: 30px;
+            line-height: 1.1;
+        }
+
+        .subtitle {
+            margin: 8px 0 0;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .status-pill {
+            padding: 10px 16px;
+            border-radius: 999px;
+            border: 1px solid var(--success-border);
+            background: var(--success);
+            color: var(--success-text);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .content {
+            display: grid;
+            grid-template-columns: 380px minmax(0, 1fr);
+            gap: 24px;
+            padding: 24px 0 32px;
+            align-items: start;
+        }
+
+        .sidebar,
+        .main {
+            min-height: 0;
+        }
+
+        .workspace-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 320px;
+            gap: 20px;
+            align-items: start;
+        }
+
+        .workspace-primary,
+        .workspace-rail {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-height: 0;
+        }
+
+        .primary-sidebar {
+            position: sticky;
+            top: 24px;
+            height: calc(100vh - 48px);
+            overflow-y: auto;
+            overflow-x: visible;
+            position: sticky;
+            padding-right: 6px;
+            scrollbar-gutter: stable;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .primary-sidebar::-webkit-scrollbar,
+        .action-sidebar::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        .primary-sidebar::-webkit-scrollbar-track,
+        .action-sidebar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 999px;
+        }
+
+        .primary-sidebar::-webkit-scrollbar-thumb,
+        .action-sidebar::-webkit-scrollbar-thumb {
+            background: rgba(139, 92, 246, 0.5);
+            border-radius: 999px;
+            border: 2px solid rgba(0, 0, 0, 0.08);
+        }
+
+        .action-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .workspace-rail {
+            position: sticky;
+            top: 24px;
+            max-height: calc(100vh - 48px);
+        }
+
+
+        .card h2 {
+            margin: 0 0 16px;
+            font-size: 20px;
+        }
+
+        .stack {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .inline-grid {
+            display: grid;
+            grid-template-columns: 84px minmax(0, 1fr);
+            gap: 12px;
+        }
+
+        .rotation-grid {
+            display: grid;
+            grid-template-columns: 1fr 140px 1fr;
+            gap: 12px;
+        }
+
+        .coord-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 110px;
+            gap: 12px;
+        }
+
+        .label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--muted);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+        }
+
+        .field,
+        .select {
+            width: 100%;
+            padding: 11px 12px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            background: rgba(0, 0, 0, 0.2);
+            color: var(--text);
+            outline: none;
+        }
+
+        .field::placeholder {
+            color: var(--muted-2);
+        }
+
+
+        .card {
+            border: 1px solid var(--border);
+            background: var(--card);
+            border-radius: var(--radius-lg);
+            padding: 18px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(8px);
+            position: relative;
+            overflow: visible;
+            z-index: 1;
+        }
+
+        .card.dropdown-active {
+            z-index: 2000;
+        }
+
+        .stack,
+        .inline-grid {
+            overflow: visible;
+        }
+
+        .combo-host {
+            position: relative;
+        }
+
+        .combo-menu {
+            position: fixed;
+            display: none;
+            max-height: min(220px, calc(100vh - 32px));
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            background: #171722;
+            border-radius: 14px;
+            box-shadow: var(--shadow);
+            z-index: 5000;
+            padding: 6px;
+            min-width: 220px;
+        }
+
+        .combo-menu.open {
+            display: block;
+        }
+
+        .combo-option {
+            width: 100%;
+            text-align: left;
+            border: 0;
+            background: transparent;
+            color: var(--text);
+            border-radius: 10px;
+            padding: 10px 12px;
+            cursor: pointer;
+        }
+
+        .combo-option:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .btn,
+        .file-button {
+            border: 1px solid var(--border);
+            background: var(--card-2);
+            color: var(--text);
+            border-radius: 16px;
+            padding: 10px 14px;
+            cursor: pointer;
+            transition: transform 0.12s ease, background 0.12s ease;
+            font-weight: 600;
+        }
+
+        .btn:hover,
+        .file-button:hover {
+            background: rgba(255, 255, 255, 0.13);
+        }
+
+        .btn:active,
+        .file-button:active {
+            transform: scale(0.99);
+        }
+
+        .btn-accent {
+            background: var(--accent);
+            border-color: var(--accent-border);
+            color: var(--accent-text);
+            font-weight: 700;
+        }
+
+        .btn-success {
+            background: var(--success);
+            border-color: var(--success-border);
+            color: var(--success-text);
+            font-weight: 700;
+        }
+
+        .btn-save {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-save.saved::after {
+            content: '✓ Staged';
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--success);
+            border-radius: inherit;
+            color: var(--success-text);
+            font-weight: 700;
+            animation: fadeOut 1.2s ease forwards;
+        }
+
+        @keyframes fadeOut {
+            0% {
+                opacity: 1;
+            }
+
+            70% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0;
+            }
+        }
+
+        .toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border: 1px solid var(--border);
+            background: rgba(0, 0, 0, 0.12);
+            border-radius: 14px;
+            padding: 11px 12px;
+            color: rgba(245, 247, 251, 0.82);
+            font-size: 14px;
+        }
+
+        .toggle input {
+            accent-color: #8b5cf6;
+        }
+
+        .rename-preview {
+            border: 1px solid var(--accent-border);
+            background: rgba(139, 92, 246, 0.12);
+            color: var(--accent-text);
+            border-radius: 18px;
+            padding: 14px;
+            text-align: center;
+            font-weight: 600;
+            word-break: break-all;
+        }
+
+        .rename-hint {
+            margin: 2px 0 0;
+            text-align: center;
+            color: var(--muted-2);
+            font-size: 11px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .dropzone {
+            margin-top: 16px;
+            border: 1px dashed var(--border);
+            background: rgba(0, 0, 0, 0.12);
+            border-radius: 18px;
+            padding: 16px;
+        }
+
+        .dropzone-label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            border: 1px solid var(--border);
+            background: var(--card);
+            border-radius: 18px;
+            padding: 16px;
+            cursor: pointer;
+        }
+
+        .dropzone-title {
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .dropzone-text {
+            margin-top: 6px;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .hidden-input {
+            display: none;
+        }
+
+        .header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 14px;
+        }
+
+        .eyebrow {
+            color: var(--muted-2);
+            font-size: 11px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+        }
+
+        .section-copy {
+            margin: 6px 0 0;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .table-wrap {
+            overflow: hidden;
+            border: 1px solid var(--border);
+            border-radius: 18px;
+        }
+
+        .table-scroll {
+            overflow: auto;
+            max-height: calc(50px + (10 * 52px));
+        }
+
+        .table-scroll::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        .table-scroll::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .table-scroll::-webkit-scrollbar-thumb {
+            background: rgba(139, 92, 246, 0.5);
+            border-radius: 999px;
+        }
+
+        table {
+            width: 100%;
+            min-width: 1100px;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        thead {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        th,
+        td {
+            padding: 13px 14px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            white-space: nowrap;
+        }
+
+        th {
+            color: rgba(245, 247, 251, 0.72);
+            font-weight: 600;
+        }
+
+        tbody tr:nth-child(odd) {
+            background: rgba(0, 0, 0, 0.12);
+        }
+
+        tbody tr:nth-child(even) {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        tbody tr:hover {
+            background: rgba(139, 92, 246, 0.08);
+            cursor: pointer;
+        }
+
+        tbody tr.selected-row {
+            background: rgba(139, 92, 246, 0.14) !important;
+        }
+
+        /* Staged cell highlight */
+        td.staged-cell {
+            color: var(--staged-text);
+            position: relative;
+        }
+
+        td.staged-cell::after {
+            content: ' *';
+            color: #fbbf24;
+            font-weight: 900;
+        }
+
+        .tag-pill {
+            display: inline-block;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.1);
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .tag-pill.status-loaded {
+            border-color: var(--border);
+        }
+
+        .tag-pill.status-parsed {
+            border-color: var(--success-border);
+            color: var(--success-text);
+            background: var(--success);
+        }
+
+        .tag-pill.status-staged {
+            border-color: var(--staged-border);
+            color: var(--staged-text);
+            background: var(--staged);
+        }
+
+        .tag-pill.status-noexif {
+            border-color: rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+            background: rgba(239, 68, 68, 0.12);
+        }
+
+        .bottom-grid {
+            display: contents;
+        }
+
+        .sticky-preview {
+            position: relative;
+            top: auto;
+            z-index: 20;
+        }
+
+        .preview-box {
+            height: 320px;
+            border-radius: 18px;
+            border: 1px solid var(--border);
+            background: #111118;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--muted-2);
+            font-size: 14px;
+            overflow: hidden;
+        }
+
+        .preview-media {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .preview-box img {
+            display: block;
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            transform-origin: center center;
+        }
+
+        .preview-controls {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .preview-rotation-readout {
+            margin-top: 10px;
+            padding: 12px;
+            text-align: center;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: rgba(0, 0, 0, 0.18);
+            font-weight: 700;
+        }
+
+        .progress-track {
+            height: 16px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: rgba(0, 0, 0, 0.18);
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background: rgba(139, 92, 246, 0.72);
+            border-radius: 999px;
+            transition: width 0.3s ease;
+        }
+
+        .status-text {
+            margin-top: 12px;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        /* Staging summary badge */
+        .staged-count-badge {
+            display: inline-block;
+            padding: 3px 9px;
+            border-radius: 999px;
+            background: var(--staged);
+            border: 1px solid var(--staged-border);
+            color: var(--staged-text);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+
+        @media (max-width: 1180px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+
+            .bottom-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .primary-sidebar,
+            .action-sidebar,
+            .sticky-preview {
+                position: static;
+                height: auto;
+                overflow: visible;
+                padding-right: 0;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .topbar-inner {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .grid-4,
+            .grid-3,
+            .grid-2,
+            .inline-grid,
+            .rotation-grid,
+            .coord-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .dropzone-label {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .title {
+                font-size: 26px;
+            }
+
+            .content,
+            .topbar-inner {
+                width: min(100% - 20px, 1440px);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app">
+        <header class="topbar">
+            <div class="topbar-inner">
+                <div>
+                    <h1 class="title">Film EXIF Tagger</h1>
+                    <p class="subtitle">Client-side EXIF tagging and renaming workflow for film scans</p>
+                    <p class="subtitle" style="margin-top:6px; font-size:12px; opacity:0.8;">
+                        Files are processed locally in your browser and are not uploaded.
+                        This tool is provided “as is” without warranty, and the author is not responsible for any data
+                        loss or damage.
+                    </p>
+                    <p class="subtitle" style="margin-top:4px;">
+                        Built by
+                        <a href="https://github.com/MrBroccoliJP" target="_blank" rel="noopener noreferrer"
+                            style="color: var(--accent-text); text-decoration: none;">João Fernandes</a>
+                    </p>
+                    <p class="subtitle" style="margin-top:4px;">
+                        Also available as a desktop tool →
+                        <a href="https://github.com/MrBroccoliJP/FilmTagger/tree/main/ahk" target="_blank"
+                            style="color: var(--accent-text); text-decoration:none;">
+                            AutoHotkey version
+                        </a>
+                    </p>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                    <a href="https://github.com/MrBroccoliJP/FilmTagger" target="_blank" rel="noopener noreferrer"
+                        class="btn" style="text-decoration:none;">GitHub</a>
+                    <div class="status-pill" id="systemPill">System: Ready</div>
+                </div>
+            </div>
+        </header>
+
+        <div class="content">
+            <aside class="sidebar primary-sidebar">
+                <!-- ── Hardware / Emulsion ────────────────────────────── -->
+                <section class="card" id="card-hardware">
+                    <h2>Hardware / Emulsion</h2>
+                    <div class="stack">
+                        <div class="combo-host">
+                            <label class="label" for="camera">Camera Body</label>
+                            <input id="camera" class="field" autocomplete="off" placeholder="Canon A-1" />
+                        </div>
+                        <div class="combo-host">
+                            <label class="label" for="lens">Lens Optics</label>
+                            <input id="lens" class="field" autocomplete="off"
+                                placeholder="Canon FD 50mm f/1.4 S.S.C." />
+                        </div>
+                        <div class="inline-grid">
+                            <div>
+                                <label class="label" for="iso">ISO</label>
+                                <input id="iso" class="field" placeholder="200" />
+                            </div>
+                            <div class="combo-host">
+                                <label class="label" for="film">Film Stock</label>
+                                <input id="film" class="field" autocomplete="off" placeholder="Kodak Gold 200" />
+                            </div>
+                        </div>
+                        <button class="btn btn-save" id="saveHardware" type="button">Save</button>
+                    </div>
+                </section>
+
+                <!-- ── Temporal Data ───────────────────────────────────── -->
+                <section class="card" id="card-temporal">
+                    <h2>Temporal Data</h2>
+                    <div class="stack">
+                        <div class="grid-3" style="grid-template-columns: 1fr 1fr 1fr 52px;">
+                            <div>
+                                <label class="label" for="day">Day</label>
+                                <input id="day" class="field" placeholder="16" />
+                            </div>
+                            <div>
+                                <label class="label" for="month">Month</label>
+                                <input id="month" class="field" placeholder="04" />
+                            </div>
+                            <div>
+                                <label class="label" for="year">Year</label>
+                                <input id="year" class="field" placeholder="2026" />
+                            </div>
+                            <div>
+                                <label class="label" for="calendarPick">Pick</label>
+                                <button class="btn" id="calendarPick" type="button" aria-label="Pick date"
+                                    title="Pick date">📅</button>
+                                <input id="calendarPickInput" type="date"
+                                    style="position:absolute; opacity:0; pointer-events:none; width:1px; height:1px;" />
+                            </div>
+                        </div>
+                        <button class="btn btn-save" id="saveTemporal" type="button">Save</button>
+                    </div>
+                </section>
+
+                <!-- ── GPS / Location ─────────────────────────────────── -->
+
+                <section class="card" id="card-gps">
+                    <h2>GPS / Location</h2>
+                    <div class="stack">
+                        <div>
+                            <label class="label" for="coords">Paste Decimal Coordinates</label>
+                            <div class="coord-grid">
+                                <input id="coords" class="field" placeholder="38.7223, -9.1393" />
+                                <button class="btn" id="btnVerifyCoords" type="button">Verify</button>
+                            </div>
+                        </div>
+                        <div class="grid-3">
+                            <div>
+                                <label class="label" for="city">City</label>
+                                <input id="city" class="field" placeholder="Lisbon" />
+                            </div>
+                            <div>
+                                <label class="label" for="region">Region</label>
+                                <input id="region" class="field" placeholder="Lisbon" />
+                            </div>
+                            <div>
+                                <label class="label" for="country">Country</label>
+                                <input id="country" class="field" placeholder="Portugal" />
+                            </div>
+                        </div>
+                        <button class="btn btn-save" id="saveGPS" type="button">Save</button>
+                    </div>
+                </section>
+
+                <!-- ── Renaming ───────────────────────────────────────── -->
+                <section class="card" id="card-rename">
+                    <h2>Renaming</h2>
+                    <div class="stack">
+                        <label class="toggle"
+                            style="background: rgba(139,92,246,0.1); border-color: rgba(139,92,246,0.25); color: var(--accent-text);">
+                            <input type="checkbox" id="autoRename" checked />
+                            <span>Enable auto-rename for written files</span>
+                        </label>
+                        <div class="grid-2">
+                            <div>
+                                <label class="label" for="prefix">Prefix</label>
+                                <input id="prefix" class="field" placeholder="Optional" />
+                            </div>
+                            <div>
+                                <label class="label" for="suffix">Suffix</label>
+                                <input id="suffix" class="field" placeholder="Optional" />
+                            </div>
+                        </div>
+                        <div>
+                            <label class="label" for="custom-tag">Custom Tag</label>
+                            <input id="custom-tag" class="field"
+                                placeholder="Optional custom tag applied to all written files" />
+                        </div>
+                        <label class="toggle">
+                            <input type="checkbox" id="include35mm" checked />
+                            <span>35mm film scan</span>
+                        </label>
+                        <label class="toggle">
+                            <input type="checkbox" id="include120mm" />
+                            <span>120mm film scan</span>
+                        </label>
+                        <div class="rename-preview" id="renamePreview">YYYYMMDD_CAM_FILM_001.jpg</div>
+                        <p class="rename-hint">[Prefix_]YYYYMMDD_CAM_FILM_NNN[_Suffix].ext</p>
+                    </div>
+                </section>
+            </aside>
+
+            <main class="main">
+                <div class="workspace-layout">
+                    <div class="workspace-primary">
+                        <section class="card">
+                            <div class="toolbar">
+                                <button class="btn" id="btnAddFiles" type="button">+ Files</button>
+                                <button class="btn" id="btnClear" type="button">Clear</button>
+                                <!-- <button class="btn" id="btnParseExif" type="button">Parse EXIF</button> -->
+                            </div>
+                            <div class="dropzone">
+                                <label class="dropzone-label" for="fileInput">
+                                    <div>
+                                        <div class="dropzone-title">Load image files</div>
+                                        <div class="dropzone-text">Client-side only. Nothing uploads to the server.
+                                        </div>
+                                    </div>
+                                    <span class="file-button">Choose files</span>
+                                    <input id="fileInput" class="hidden-input" type="file" multiple accept="image/*" />
+                                </label>
+                            </div>
+                        </section>
+
+                        <section class="card">
+                            <div class="header-row">
+                                <div>
+                                    <h2 style="margin-bottom: 0;">
+                                        Staging Table
+                                        <span class="staged-count-badge" id="stagedBadge" style="display:none">0
+                                            staged</span>
+                                    </h2>
+                                    <p class="section-copy">Check rows, edit a group box, click Save — changed cells
+                                        show <span style="color:#fbbf24;font-weight:700;">*</span></p>
+                                </div>
+                                <div
+                                    style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end;">
+                                    <button class="btn" id="btnCheckAll" type="button">Check All</button>
+                                    <button class="btn" id="btnCheckNone" type="button">Check None</button>
+                                    <div class="eyebrow" id="colCount">0 files</div>
+                                </div>
+                            </div>
+                            <div class="table-wrap">
+                                <div class="table-scroll">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th style="width:36px;"><input type="checkbox" id="checkAll"></th>
+                                                <th>#</th>
+                                                <th>File</th>
+                                                <th>Camera</th>
+                                                <th>Lens</th>
+                                                <th>Film</th>
+                                                <th>GPS</th>
+                                                <th>Date</th>
+                                                <th>Tags</th>
+                                                <th>Rot</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tableBody">
+                                            <tr>
+                                                <td colspan="11"
+                                                    style="text-align:center;color:var(--muted-2);padding:32px;">No
+                                                    files loaded yet</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <aside class="workspace-rail">
+                        <div class="card sticky-preview">
+                            <div class="header-row" style="margin-bottom: 12px;">
+                                <h2 style="margin:0;">Preview</h2>
+                                <div class="eyebrow" id="previewLabel">No file selected</div>
+                            </div>
+                            <div class="preview-box" id="previewBox">Select a row to preview</div>
+                            <div id="rotDisplay" style="display:none">0°</div>
+                            <div class="preview-controls">
+                                <button class="btn" id="previewRotLeft" type="button">↶ Left</button>
+                                <button class="btn" id="previewRotRight" type="button">Right ↷</button>
+                            </div>
+                            <div class="preview-controls" style="margin-top:10px;">
+                                <button class="btn" id="previewRotReset" type="button">Reset</button>
+                                <button class="btn btn-save" id="previewRotApply" type="button">Set All</button>
+                            </div>
+                        </div>
+
+                        <div class="action-sidebar">
+                            <section class="card">
+                                <h2>Actions</h2>
+                                <div class="stack">
+                                    <button class="btn" id="btnClearStaged" type="button" style="width:100%">Clear
+                                        Checked
+                                        Staging</button>
+                                    <button class="btn btn-accent" id="btnWriteAll" type="button"
+                                        style="width:100%; padding-top: 14px; padding-bottom: 14px;">✦ Write All Staged
+                                        Changes</button>
+                                </div>
+                            </section>
+
+                            <section class="card">
+                                <h2>Progress</h2>
+                                <div class="progress-track">
+                                    <div class="progress-bar" id="progressBar"></div>
+                                </div>
+                                <p class="status-text" id="statusText">Ready</p>
+                            </section>
+                        </div>
+                    </aside>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/exifr/dist/full.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/piexifjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script>
+        // ─── State ───────────────────────────────────────────────────────────────────
+        /**
+         * stagedFiles[i] = {
+         *   file:    File,
+         *   exif:    object|null,
+         *   checked: bool,
+         *   rotation: number,       // degrees 0/90/180/270
+         *   status:  'Loaded'|'Parsing'|'Parsed'|'No EXIF'|'Staged',
+         *   staged:  {              // per-column override from Save buttons
+         *     camera:  string|null,
+         *     lens:    string|null,
+         *     film:    string|null,
+         *     gps:     string|null,
+         *     date:    string|null,
+         *     tags:    string|null,
+         *     rot:     string|null,
+         *   }
+         * }
+         */
+        let stagedFiles = [];
+        let selectedIndex = -1;
+        let previewUrl = null;
+        let currentRotDeg = 0;   // live rotation UI state
+
+        // ─── DOM refs ────────────────────────────────────────────────────────────────
+        const fileInput = document.getElementById('fileInput');
+        const tableBody = document.getElementById('tableBody');
+        const previewBox = document.getElementById('previewBox');
+        const previewLabel = document.getElementById('previewLabel');
+        const checkAllBox = document.getElementById('checkAll');
+        const progressBar = document.getElementById('progressBar');
+        const statusText = document.getElementById('statusText');
+        const systemPill = document.getElementById('systemPill');
+        const stagedBadge = document.getElementById('stagedBadge');
+        const colCount = document.getElementById('colCount');
+        const rotDisplay = document.getElementById('rotDisplay');
+        const renamePreview = document.getElementById('renamePreview');
+
+        // Sidebar inputs
+        const $camera = () => document.getElementById('camera').value;
+        const $lens = () => document.getElementById('lens').value;
+        const $iso = () => document.getElementById('iso').value;
+        const $film = () => document.getElementById('film').value;
+        const $customTag = () => document.getElementById('custom-tag').value;
+        const $include35 = () => document.getElementById('include35mm').checked;
+        const $include120 = () => document.getElementById('include120mm').checked;
+        const $day = () => document.getElementById('day').value.padStart(2, '0');
+        const $month = () => document.getElementById('month').value.padStart(2, '0');
+        const $year = () => document.getElementById('year').value;
+        const $coords = () => document.getElementById('coords').value.trim();
+        const $city = () => document.getElementById('city').value.trim();
+        const $region = () => document.getElementById('region').value.trim();
+        const $country = () => document.getElementById('country').value.trim();
+        const $prefix = () => document.getElementById('prefix').value.trim();
+        const $suffix = () => document.getElementById('suffix').value.trim();
+
+        // ─── Helpers ─────────────────────────────────────────────────────────────────
+        function checkedIndexes() {
+            return stagedFiles.map((f, i) => f.checked ? i : -1).filter(i => i >= 0);
+        }
+
+        function emptyStaged() {
+            return { camera: null, lens: null, film: null, iso: null, gps: null, date: null, dateTaken: null, dateCreated: null, tags: null, rot: null };
+        }
+
+
+        function getFileFingerprint(file) {
+            return [String(file.name || '').toLowerCase(), file.size || 0, file.lastModified || 0].join('::');
+        }
+
+        function collectExistingFingerprints() {
+            return new Set(stagedFiles.map(item => getFileFingerprint(item.file)));
+        }
+
+        function setProgress(pct, msg) {
+            progressBar.style.width = pct + '%';
+            statusText.textContent = msg;
+        }
+
+        function setSystemPill(text, type = 'ready') {
+            systemPill.textContent = 'System: ' + text;
+            systemPill.style.background = type === 'busy'
+                ? 'rgba(251,191,36,0.18)' : type === 'done'
+                    ? 'var(--success)' : 'var(--success)';
+            systemPill.style.borderColor = type === 'busy'
+                ? 'rgba(251,191,36,0.35)' : 'var(--success-border)';
+            systemPill.style.color = type === 'busy' ? '#fde68a' : 'var(--success-text)';
+        }
+
+        function flashSaved(btn) {
+            btn.classList.remove('saved');
+            void btn.offsetWidth; // reflow to restart animation
+            btn.classList.add('saved');
+            setTimeout(() => btn.classList.remove('saved'), 1400);
+        }
+
+        function updateStagedBadge() {
+            const count = stagedFiles.filter(f => f.staged && Object.values(f.staged).some(v => v !== null)).length;
+            if (count > 0) {
+                stagedBadge.style.display = '';
+                stagedBadge.textContent = count + ' staged';
+            } else {
+                stagedBadge.style.display = 'none';
+            }
+            colCount.textContent = stagedFiles.length + ' file' + (stagedFiles.length !== 1 ? 's' : '');
+        }
+
+        function gpsString(item) {
+            if (item.staged?.gps) return item.staged.gps;
+            if (item.exif?.latitude != null)
+                return item.exif.latitude.toFixed(5) + ', ' + item.exif.longitude.toFixed(5);
+            return '—';
+        }
+
+        function normalizeExifDate(value) {
+            if (!value) return '';
+            if (value instanceof Date && !Number.isNaN(value.getTime())) {
+                const yyyy = value.getFullYear();
+                const mm = String(value.getMonth() + 1).padStart(2, '0');
+                const dd = String(value.getDate()).padStart(2, '0');
+                return `${yyyy}:${mm}:${dd} 12:00:00`;
+            }
+            if (typeof value === 'number' && Number.isFinite(value)) {
+                const d = new Date(value);
+                if (!Number.isNaN(d.getTime())) return normalizeExifDate(d);
+            }
+            const s = String(value).trim();
+            if (/^\d{4}:\d{2}:\d{2}/.test(s)) return s;
+            if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10).replace(/-/g, ':') + ' 12:00:00';
+            const loose = s.match(/(\d{4})[^\d]?(\d{2})[^\d]?(\d{2})/);
+            if (loose) return `${loose[1]}:${loose[2]}:${loose[3]} 12:00:00`;
+            return s;
+        }
+
+        function getExifDateValue(item) {
+            return item?.staged?.date
+                || item?.exif?.DateTimeOriginal
+                || item?.exif?.CreateDate
+                || item?.exif?.DateCreated
+                || item?.exif?.DateTimeDigitized
+                || item?.exif?.ModifyDate
+                || item?.exif?.date
+                || item?.exif?.datetime
+                || item?.file?.lastModified
+                || '';
+        }
+
+        function formatExifDateForDisplay(value) {
+            const s = normalizeExifDate(value);
+            const m = s.match(/^(\d{4}):(\d{2}):(\d{2})/);
+            return m ? `${m[3]}/${m[2]}/${m[1]}` : '—';
+        }
+
+        function dateString(item) {
+            const value = getExifDateValue(item);
+            return value ? formatExifDateForDisplay(value) : '—';
+        }
+
+        const cameraCodeMap = {
+            // Canon
+            'Canon A-1': 'CA1',
+            'Canon AE-1': 'CAE1',
+            'Canon AE-1 Program': 'CAE1P',
+            'Canon AV-1': 'CAV1',
+            'Canon F-1': 'CF1',
+            'Canon AF-35ML': 'CAF35ML', // requested
+
+            // Nikon
+            'Nikon FM2': 'NFM2',
+            'Nikon FM': 'NFM',
+            'Nikon FE2': 'NFE2',
+            'Nikon F3': 'NF3',
+
+            // Olympus
+            'Olympus OM-1': 'OOM1',
+            'Olympus OM-2': 'OOM2',
+            'Olympus Mju II (Stylus Epic)': 'OMJU2',
+
+            // Pentax
+            'Pentax K1000': 'PK1000',
+            'Pentax MX': 'PMX',
+            'Pentax 17': 'P17',
+
+            // Point & Shoot / Premium Compacts (very popular now)
+            'Contax T2': 'CT2',
+            'Contax T3': 'CT3',
+            'Yashica T4': 'YT4',
+            'Ricoh GR1': 'RGR1',
+
+            // Leica
+            'Leica M6': 'LM6',
+            'Leica M3': 'LM3',
+
+            // Disposable
+            'Kodak FunSaver Disposable': 'KFS',
+            'Fujifilm QuickSnap Disposable': 'FQS',
+            'Agfa LeBox Disposable': 'ALB'
+        };
+
+        const filmMap = {
+            'Kodak Gold 200': { code: 'KG200', iso: '200' },
+            'Kodak UltraMax 400': { code: 'KUM400', iso: '400' },
+            'Kodak Portra 160': { code: 'KP160', iso: '160' },
+            'Kodak Portra 400': { code: 'KP400', iso: '400' },
+            'Kodak Portra 800': { code: 'KP800', iso: '800' },
+            'Kodak Ektar 100': { code: 'KE100', iso: '100' },
+            'Kodak ColorPlus 200': { code: 'KCP200', iso: '200' },
+            'Kodak Pro Image 100': { code: 'KPI100', iso: '100' },
+
+            'Ilford HP5 Plus 400': { code: 'IHP5400', iso: '400' },
+            'Ilford Delta 100': { code: 'ID100', iso: '100' },
+            'Ilford Delta 400': { code: 'ID400', iso: '400' },
+            'Ilford FP4 Plus 125': { code: 'IFP4125', iso: '125' },
+
+            'CineStill 800T': { code: 'CS800T', iso: '800' },
+            'CineStill 400D': { code: 'CS400D', iso: '400' },
+
+            'Fujifilm Superia X-TRA 400': { code: 'FS400', iso: '400' },
+            'Fujifilm Pro 400H': { code: 'FP400H', iso: '400' },
+
+            'Lomography Color Negative 400': { code: 'LCN400', iso: '400' },
+            'Lomography 800': { code: 'L800', iso: '800' }
+        };
+
+        const lensOptions = [
+            // Canon FD
+            'Canon FD 50mm f/1.4',
+            'Canon FD 50mm f/1.4 S.S.C.',
+            'Canon FD 50mm f/1.8',
+            'Canon FD 28mm f/2.8',
+            'Canon FD 35mm f/2',
+            'Canon FD 85mm f/1.8',
+
+            // Nikon
+            'Nikon 50mm f/1.8 AI-S',
+            'Nikon 50mm f/1.4 AI-S',
+            'Nikon 28mm f/2.8 AI-S',
+            'Nikon 35mm f/2 AI-S',
+            'Nikon 85mm f/2',
+
+            // Olympus
+            'Olympus Zuiko 50mm f/1.8',
+            'Olympus Zuiko 50mm f/1.4',
+            'Olympus Zuiko 35mm f/2.8',
+            'Olympus 35mm f/2.8 (Trip 35)',
+
+            // Pentax
+            'SMC Pentax 50mm f/1.7',
+            'SMC Pentax 50mm f/1.4',
+            'Pentax 40mm f/2.8 Pancake',
+            '45mm f/3.5 (Pentax 17)',
+
+            // Leica
+            'Leica Summicron 50mm f/2',
+            'Leica Summilux 50mm f/1.4',
+
+            // Fixed lens compacts (for completeness)
+            'Fixed Lens 38mm (Point & Shoot)',
+            'Fixed Lens 35mm (Point & Shoot)'
+        ];
+
+        function compactCode(value, map, fallback) {
+            const raw = String(value || '').trim();
+            if (!raw) return fallback;
+            if (map[raw]) return map[raw];
+            return raw.replace(/[^A-Za-z0-9]+/g, ' ').trim().split(/\s+/).map(part => {
+                const digits = part.match(/\d+/g)?.join('') || '';
+                const letters = part.replace(/[^A-Za-z]/g, '').slice(0, 2);
+                return (letters + digits).toUpperCase();
+            }).join('').slice(0, 12) || fallback;
+        }
+
+        function getKeywordList(exif) {
+            const raw = exif?.Keywords ?? exif?.XPKeywords;
+            if (!raw) return [];
+            if (Array.isArray(raw)) return raw.map(v => String(v || '').trim()).filter(Boolean);
+            return String(raw).split(/[;,]/).map(v => v.trim()).filter(Boolean);
+        }
+
+        function extractFilmFromExif(exif) {
+            return getKeywordList(exif)[0] || '';
+        }
+
+        function pickCameraValue(item) {
+            return item.staged?.camera || item.exif?.Model || [item.exif?.Make, item.exif?.Model].filter(Boolean).join(' ').trim() || '';
+        }
+
+        function pickLensValue(item) {
+            return item.staged?.lens || item.exif?.LensModel || item.exif?.LensInfo || '';
+        }
+
+        function pickDateValue(item) {
+            return getExifDateValue(item);
+        }
+
+        function splitGpsParts(value) {
+            const raw = String(value || '').trim();
+            if (!raw) return { coords: '', city: '', region: '', country: '' };
+            const [coordsPart, locPart] = raw.split('|').map(v => v.trim());
+            const locBits = (locPart || '').split(',').map(v => v.trim()).filter(Boolean);
+            return {
+                coords: coordsPart || '',
+                city: locBits[0] || '',
+                region: locBits[1] || '',
+                country: locBits[2] || ''
+            };
+        }
+
+        function effectiveFilm(item) {
+            return item.staged?.film || extractFilmFromExif(item.exif) || '';
+        }
+
+        function currentScanTag() {
+            if ($include35()) return '35mm film scan';
+            if ($include120()) return '120mm film scan';
+            return '';
+        }
+
+        function composedGlobalTags(item) {
+            const parts = [];
+            const film = effectiveFilm(item) || $film();
+            if (film) parts.push(film);
+            const scan = currentScanTag();
+            if (scan) parts.push(scan);
+            if ($customTag()) parts.push($customTag());
+            return parts;
+        }
+
+        function updateRenamePreview() {
+            const auto = document.getElementById('autoRename').checked;
+            if (!auto) {
+                renamePreview.textContent = '(auto-rename disabled)';
+                return;
+            }
+
+            const p = $prefix() ? $prefix() + '_' : '';
+            const s = $suffix() ? '_' + $suffix() : '';
+            const cam = compactCode($camera(), cameraCodeMap, 'CAM');
+            const film = compactFilmCode($film());
+
+            renamePreview.textContent = `${p}YYYYMMDD_${cam}_${film}_NNN${s}.ext`;
+        }
+
+        ['prefix', 'suffix', 'camera', 'film'].forEach(id =>
+            document.getElementById(id)?.addEventListener('input', updateRenamePreview)
+        );
+        document.getElementById('film').addEventListener('change', updateRenamePreview);
+        document.getElementById('camera').addEventListener('change', updateRenamePreview);
+        document.getElementById('autoRename').addEventListener('change', updateRenamePreview);
+        updateRenamePreview();
+
+        // ─── Render table ────────────────────────────────────────────────────────────
+        function renderTable() {
+            if (stagedFiles.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--muted-2);padding:32px;">No files loaded yet</td></tr>';
+                updateStagedBadge();
+                return;
+            }
+
+            tableBody.innerHTML = '';
+
+            stagedFiles.forEach((item, index) => {
+                const s = item.staged || emptyStaged();
+                const isSelected = index === selectedIndex;
+
+                const camVal = pickCameraValue(item) || '—';
+                const lensVal = pickLensValue(item) || '—';
+                const filmVal = effectiveFilm(item) || '—';
+                const gpsVal = gpsString(item);
+                const dateVal = dateString(item);
+                const tagsVal = (s.tags || getKeywordList(item.exif).join(' | ')) || '—';
+                const rotVal = s.rot !== null ? s.rot : (item.rotation ? item.rotation + '°' : '0°');
+
+                const statusClass = {
+                    'Loaded': 'status-loaded',
+                    'Parsing': '',
+                    'Parsed': 'status-parsed',
+                    'No EXIF': 'status-noexif',
+                    'Staged': 'status-staged',
+                }[item.status] || '';
+
+                function tc(col, val) {
+                    const isStaged = s[col] !== null && s[col] !== undefined;
+                    return `<td class="${isStaged ? 'staged-cell' : ''}">${val}</td>`;
+                }
+
+                const row = document.createElement('tr');
+                if (isSelected) row.classList.add('selected-row');
+
+                row.innerHTML = `
+        <td><input type="checkbox" class="row-check" data-index="${index}" ${item.checked ? 'checked' : ''}></td>
+        <td>${index + 1}</td>
+        <td title="${item.file.name}">${item.file.name.length > 22 ? item.file.name.slice(0, 20) + '…' : item.file.name}</td>
+        ${tc('camera', camVal)}
+        ${tc('lens', lensVal)}
+        ${tc('film', filmVal)}
+        ${tc('gps', gpsVal)}
+        ${tc('date', dateVal)}
+        ${tc('tags', tagsVal)}
+        ${tc('rot', rotVal)}
+        <td><span class="tag-pill ${statusClass}">${item.status}</span></td>
+      `;
+
+                row.addEventListener('click', (e) => {
+                    if (e.target.type === 'checkbox') return;
+                    selectedIndex = index;
+                    populateEditorsFromItem(stagedFiles[index]);
+                    renderPreview(index);
+                    renderTable();
+                });
+
+                tableBody.appendChild(row);
+            });
+
+            // Re-attach checkbox listeners
+            document.querySelectorAll('.row-check').forEach(cb => {
+                cb.addEventListener('change', (e) => {
+                    const i = Number(e.target.dataset.index);
+                    stagedFiles[i].checked = e.target.checked;
+                    updateStagedBadge();
+                });
+            });
+
+            updateStagedBadge();
+        }
+
+        // ─── Preview ─────────────────────────────────────────────────────────────────
+        function renderPreview(index) {
+            const item = stagedFiles[index];
+            if (!item) return;
+            if (previewUrl) URL.revokeObjectURL(previewUrl);
+            previewUrl = URL.createObjectURL(item.file);
+            const rot = item.staged?.rot ?? item.rotation ?? 0;
+            previewBox.innerHTML = `<div class="preview-media"><img src="${previewUrl}" alt="Preview" style="transform: rotate(${rot}deg); transition: transform 0.2s ease;"></div>`;
+            previewLabel.textContent = item.file.name;
+            currentRotDeg = rot;
+            updateRotDisplay();
+        }
+
+        function populateEditorsFromItem(item) {
+            if (!item) return;
+
+            const cam = pickCameraValue(item);
+            if (cam) document.getElementById('camera').value = cam;
+
+            const lens = pickLensValue(item);
+            if (lens) document.getElementById('lens').value = lens;
+
+            const film = effectiveFilm(item);
+            if (film) document.getElementById('film').value = film;
+
+            const parsedIso = item.exif?.ISO || item.exif?.ISOSpeedRatings || '';
+            if (parsedIso) document.getElementById('iso').value = item.staged?.iso || parsedIso;
+
+            const normDate = normalizeExifDate(pickDateValue(item));
+            const m = normDate.match(/^(\d{4}):(\d{2}):(\d{2})/);
+            if (m) {
+                document.getElementById('year').value = m[1];
+                document.getElementById('month').value = m[2];
+                document.getElementById('day').value = m[3];
+            }
+
+            let gpsParts = { coords: '', city: '', region: '', country: '' };
+            if (item.staged?.gps) {
+                gpsParts = splitGpsParts(item.staged.gps);
+            } else if (item.exif?.latitude != null && item.exif?.longitude != null) {
+                gpsParts.coords = `${item.exif.latitude.toFixed(5)}, ${item.exif.longitude.toFixed(5)}`;
+            }
+
+            document.getElementById('coords').value = gpsParts.coords;
+            document.getElementById('city').value = gpsParts.city;
+            document.getElementById('region').value = gpsParts.region;
+            document.getElementById('country').value = gpsParts.country;
+
+            updateRenamePreview();
+        }
+
+        function stageSelected(patch) {
+            if (selectedIndex < 0 || !stagedFiles[selectedIndex]) return false;
+            Object.assign(stagedFiles[selectedIndex].staged, patch);
+            stagedFiles[selectedIndex].status = 'Staged';
+            renderTable();
+            renderPreview(selectedIndex);
+            return true;
+        }
+
+        // ─── EXIF parsing ────────────────────────────────────────────────────────────
+        async function parseExifSingle(file) {
+            try { return await exifr.parse(file, true); } catch { return null; }
+        }
+
+        async function parseAll(startIndex = 0) {
+            setProgress(0, 'Parsing EXIF…');
+            setSystemPill('Parsing', 'busy');
+            const total = stagedFiles.length - startIndex;
+            for (let i = startIndex; i < stagedFiles.length; i++) {
+                stagedFiles[i].status = 'Parsing';
+                renderTable();
+                stagedFiles[i].exif = await parseExifSingle(stagedFiles[i].file);
+                stagedFiles[i].status = stagedFiles[i].exif ? 'Parsed' : 'No EXIF';
+                if (i === selectedIndex) {
+                    populateEditorsFromItem(stagedFiles[i]);
+                    renderPreview(i);
+                }
+                setProgress(Math.round((((i - startIndex) + 1) / Math.max(total, 1)) * 100), `Parsed ${((i - startIndex) + 1)}/${Math.max(total, 1)}`);
+            }
+            renderTable();
+            if (selectedIndex >= 0 && stagedFiles[selectedIndex]) {
+                populateEditorsFromItem(stagedFiles[selectedIndex]);
+                renderPreview(selectedIndex);
+            }
+            setProgress(100, 'EXIF parsing complete');
+            setSystemPill('Ready', 'done');
+        }
+
+        // ─── File loading ────────────────────────────────────────────────────────────
+        async function loadFiles(files) {
+            files = Array.from(files || []).filter(f => f && String(f.type || '').startsWith('image/'));
+            if (!files.length) return;
+
+            const existingFingerprints = collectExistingFingerprints();
+            const seenInBatch = new Set();
+            const uniqueFiles = [];
+            let duplicateCount = 0;
+
+            files.forEach(file => {
+                const fingerprint = getFileFingerprint(file);
+                if (existingFingerprints.has(fingerprint) || seenInBatch.has(fingerprint)) {
+                    duplicateCount++;
+                    return;
+                }
+                seenInBatch.add(fingerprint);
+                uniqueFiles.push(file);
+            });
+
+            if (!uniqueFiles.length) {
+                alert(duplicateCount === 1 ? 'That file is already loaded.' : `${duplicateCount} duplicate files were skipped because they are already loaded.`);
+                fileInput.value = '';
+                return;
+            }
+
+            const startIndex = stagedFiles.length;
+            stagedFiles.push(...uniqueFiles.map(f => ({
+                file: f,
+                exif: null,
+                rotation: 0,
+                status: 'Loaded',
+                checked: true,
+                staged: emptyStaged(),
+            })));
+
+            if (duplicateCount > 0) {
+                setProgress(0, `${duplicateCount} duplicate file${duplicateCount !== 1 ? 's were' : ' was'} skipped`);
+            }
+
+            if (selectedIndex < 0) selectedIndex = 0;
+            if (stagedFiles[selectedIndex]) populateEditorsFromItem(stagedFiles[selectedIndex]);
+            renderTable();
+            renderPreview(selectedIndex);
+            await parseAll(startIndex);
+            fileInput.value = '';
+        }
+
+        fileInput.addEventListener('change', async (e) => {
+            await loadFiles(e.target.files);
+        });
+
+        document.getElementById('btnAddFiles').addEventListener('click', () => fileInput.click());
+
+        document.getElementById('calendarPick').addEventListener('click', () => {
+            const picker = document.getElementById('calendarPickInput');
+            const yearEl = document.getElementById('year');
+            const monthEl = document.getElementById('month');
+            const dayEl = document.getElementById('day');
+
+            const y = String(yearEl.value || '').trim();
+            const m = String(monthEl.value || '').trim().padStart(2, '0');
+            const d = String(dayEl.value || '').trim().padStart(2, '0');
+
+            if (/^\d{4}$/.test(y) && /^\d{2}$/.test(m) && /^\d{2}$/.test(d)) {
+                picker.value = `${y}-${m}-${d}`;
+            } else {
+                const now = new Date();
+                picker.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            }
+
+            const syncFromPicker = () => {
+                if (!picker.value) return;
+                const [yy, mm, dd] = picker.value.split('-');
+                yearEl.value = yy;
+                monthEl.value = mm;
+                dayEl.value = dd;
+            };
+
+            picker.onchange = syncFromPicker;
+            picker.oninput = syncFromPicker;
+
+            if (typeof picker.showPicker === 'function') {
+                picker.showPicker();
+            } else {
+                picker.focus();
+                picker.click();
+            }
+        });
+
+        ['dragenter', 'dragover'].forEach(evt => {
+            document.addEventListener(evt, (e) => {
+                e.preventDefault();
+                document.body.classList.add('drag-active');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(evt => {
+            document.addEventListener(evt, (e) => {
+                e.preventDefault();
+                if (evt === 'drop' || e.target === document.documentElement || e.target === document.body) {
+                    document.body.classList.remove('drag-active');
+                }
+            });
+        });
+
+        document.addEventListener('drop', async (e) => {
+            const files = Array.from(e.dataTransfer?.files || []);
+            if (!files.length) return;
+            document.body.classList.remove('drag-active');
+            await loadFiles(files);
+        });
+
+
+        function attachComboMenu(inputId, options) {
+            const input = document.getElementById(inputId);
+            const host = input?.closest('.combo-host');
+            const card = input?.closest('.card');
+            if (!input || !host || !card) return;
+
+            const menu = document.createElement('div');
+            menu.className = 'combo-menu';
+            menu.innerHTML = options.map(option =>
+                `<button type="button" class="combo-option" data-value="${option.replace(/"/g, '&quot;')}">${option}</button>`
+            ).join('');
+            document.body.appendChild(menu);
+
+            const positionMenu = () => {
+                const rect = input.getBoundingClientRect();
+                const viewportPadding = 12;
+                const preferredWidth = Math.max(rect.width, 220);
+                menu.style.width = preferredWidth + 'px';
+                menu.style.left = Math.max(viewportPadding, Math.min(rect.left, window.innerWidth - preferredWidth - viewportPadding)) + 'px';
+
+                menu.style.top = '0px';
+                menu.style.visibility = 'hidden';
+                menu.classList.add('open');
+                const menuHeight = menu.offsetHeight;
+                const spaceBelow = window.innerHeight - rect.bottom - viewportPadding;
+                const spaceAbove = rect.top - viewportPadding;
+                const showAbove = spaceBelow < Math.min(menuHeight, 220) && spaceAbove > spaceBelow;
+                const top = showAbove
+                    ? Math.max(viewportPadding, rect.top - menuHeight - 6)
+                    : Math.min(window.innerHeight - menuHeight - viewportPadding, rect.bottom + 6);
+                menu.style.top = top + 'px';
+                menu.style.visibility = 'visible';
+            };
+
+            const openMenu = () => {
+                positionMenu();
+                card.classList.add('dropdown-active');
+            };
+
+            const closeMenu = () => {
+                menu.classList.remove('open');
+                card.classList.remove('dropdown-active');
+            };
+
+            menu.querySelectorAll('.combo-option').forEach(btn => {
+                btn.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+
+                    input.value = btn.dataset.value || btn.textContent || '';
+
+                    // Trigger updates
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+
+                    // Fully close + blur to prevent re-open
+                    closeMenu();
+                    input.blur();
+                });
+            });
+
+            input.addEventListener('focus', openMenu);
+            input.addEventListener('click', openMenu);
+            input.addEventListener('input', openMenu);
+
+            window.addEventListener('resize', () => {
+                if (menu.classList.contains('open')) positionMenu();
+            });
+            document.addEventListener('scroll', () => {
+                if (menu.classList.contains('open')) positionMenu();
+            }, true);
+
+            document.addEventListener('click', (e) => {
+                if (e.target === input || host.contains(e.target) || menu.contains(e.target)) return;
+                closeMenu();
+            });
+        }
+
+        attachComboMenu('camera', ['', ...Object.keys(cameraCodeMap)]);
+        attachComboMenu('lens', ['', ...lensOptions]);
+        attachComboMenu('film', ['', ...Object.keys(filmMap)]);
+
+        document.getElementById('film').addEventListener('change', () => {
+            const mapped = filmMap[document.getElementById('film').value]?.iso;
+            if (mapped) document.getElementById('iso').value = mapped;
+            updateRenamePreview();
+        });
+
+        document.getElementById('include35mm').addEventListener('change', () => {
+            if (document.getElementById('include35mm').checked) document.getElementById('include120mm').checked = false;
+        });
+        document.getElementById('include120mm').addEventListener('change', () => {
+            if (document.getElementById('include120mm').checked) document.getElementById('include35mm').checked = false;
+        });
+
+        // ─── Toolbar buttons ─────────────────────────────────────────────────────────
+        document.getElementById('btnClear').addEventListener('click', () => {
+            if (!stagedFiles.length) return;
+            if (!confirm('Clear all loaded files?')) return;
+            stagedFiles = [];
+            selectedIndex = -1;
+            if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
+            previewBox.innerHTML = 'Select a row to preview';
+            previewLabel.textContent = 'No file selected';
+            setProgress(0, 'Ready');
+            setSystemPill('Ready');
+            renderTable();
+        });
+
+        document.getElementById('btnCheckAll').addEventListener('click', () => {
+            stagedFiles.forEach(f => f.checked = true);
+            checkAllBox.checked = true;
+            renderTable();
+        });
+
+        document.getElementById('btnCheckNone').addEventListener('click', () => {
+            stagedFiles.forEach(f => f.checked = false);
+            checkAllBox.checked = false;
+            renderTable();
+        });
+
+        //document.getElementById('btnParseExif').addEventListener('click', async () => {
+        //    if (!stagedFiles.length) return;
+        //    await parseAll();
+        // });
+
+        checkAllBox.addEventListener('change', () => {
+            stagedFiles.forEach(f => f.checked = checkAllBox.checked);
+            renderTable();
+        });
+
+        // ─── Core staging helper ─────────────────────────────────────────────────────
+        /**
+         * Apply a partial staged patch to all checked files.
+         * patch = { camera, lens, film, gps, date, tags, rot } — only provide keys to update
+         */
+        function stageChecked(patch) {
+            const targets = checkedIndexes();
+            if (!targets.length) {
+                alert('No files checked. Check at least one row in the table first.');
+                return false;
+            }
+            targets.forEach(i => {
+                Object.assign(stagedFiles[i].staged, patch);
+                stagedFiles[i].status = 'Staged';
+            });
+            renderTable();
+            if (selectedIndex >= 0) renderPreview(selectedIndex);
+            return true;
+        }
+
+        // ─── Save: Hardware / Emulsion ───────────────────────────────────────────────
+        document.getElementById('saveHardware').addEventListener('click', function () {
+            const ok = stageChecked({
+                camera: $camera(),
+                lens: $lens(),
+                film: $film(),
+                iso: $iso(),
+            });
+            if (ok) flashSaved(this);
+        });
+
+        // ─── Save: Temporal Data ─────────────────────────────────────────────────────
+        document.getElementById('saveTemporal').addEventListener('click', function () {
+            const dateStr = `${$year()}:${$month()}:${$day()} 12:00:00`;
+            const ok = stageChecked({ date: dateStr, dateTaken: dateStr, dateCreated: dateStr });
+            if (ok) flashSaved(this);
+        });
+
+        // ─── Save: GPS ───────────────────────────────────────────────────────────────
+        document.getElementById('saveGPS').addEventListener('click', function () {
+            const parts = [];
+            if ($coords()) parts.push($coords());
+            const loc = [$city(), $region(), $country()].filter(Boolean).join(', ');
+            if (loc) parts.push(loc);
+            const ok = stageChecked({ gps: parts.join(' | ') || '—' });
+            if (ok) flashSaved(this);
+        });
+
+        document.getElementById('btnVerifyCoords').addEventListener('click', async () => {
+            const raw = $coords();
+            if (!raw) { alert('Paste coordinates first (e.g. 38.7223, -9.1393)'); return; }
+            const match = raw.match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+            if (!match) { alert('Could not parse coordinates. Use decimal format: lat, lon'); return; }
+            const [, lat, lon] = match;
+            setProgress(0, 'Parsing GPS location…');
+            try {
+                const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&zoom=18&addressdetails=1`;
+                const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                const addr = data.address || {};
+                document.getElementById('city').value = addr.city || addr.town || addr.village || addr.municipality || '';
+                document.getElementById('region').value = addr.state || addr.county || '';
+                document.getElementById('country').value = addr.country || '';
+                setProgress(0, 'GPS location parsed');
+            } catch (err) {
+                console.error('Reverse geocode failed', err);
+                alert('Could not fetch city / region / country from those coordinates.');
+                setProgress(0, 'GPS parse failed');
+            }
+        });
+
+        // ─── Rotation UI + Save ───────────────────────────────────────────────────────
+        function updateRotDisplay() {
+            rotDisplay.textContent = currentRotDeg + '°';
+        }
+
+        function rotateSelected(delta) {
+            if (selectedIndex < 0 || !stagedFiles[selectedIndex]) return;
+            currentRotDeg = (currentRotDeg + delta + 360) % 360;
+            stageSelected({ rot: currentRotDeg });
+        }
+
+        document.getElementById('previewRotLeft').addEventListener('click', () => rotateSelected(-90));
+        document.getElementById('previewRotRight').addEventListener('click', () => rotateSelected(90));
+        document.getElementById('previewRotReset').addEventListener('click', () => {
+            if (selectedIndex < 0 || !stagedFiles[selectedIndex]) return;
+            currentRotDeg = 0;
+            stageSelected({ rot: currentRotDeg });
+        });
+
+        document.getElementById('previewRotApply').addEventListener('click', function () {
+            const ok = stageChecked({ rot: currentRotDeg });
+            if (ok) flashSaved(this);
+        });
+
+        // ─── Real write helpers ───────────────────────────────────────────────────────
+        function fileExt(name) {
+            const idx = name.lastIndexOf('.');
+            return idx >= 0 ? name.slice(idx + 1).toLowerCase() : '';
+        }
+
+        function sanitizePart(value) {
+            return String(value || '')
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^A-Za-z0-9]+/g, '_')
+                .replace(/^_+|_+$/g, '')
+                .toUpperCase();
+        }
+
+        function compactCameraCode(value) {
+            const raw = String(value || '').trim();
+            if (!raw) return 'CAM';
+            if (cameraCodeMap[raw]) return cameraCodeMap[raw];
+            const cleaned = sanitizePart(raw).replace(/_/g, '');
+            const brandInitial = (raw.match(/[A-Za-z]/) || ['C'])[0].toUpperCase();
+            const model = cleaned.replace(/^[A-Z]+/, '');
+            return (brandInitial + model).slice(0, 10) || cleaned.slice(0, 10) || 'CAM';
+        }
+
+        function compactFilmCode(value) {
+            const raw = String(value || '').trim();
+            if (!raw) return 'FILM';
+
+            if (filmMap[raw]?.code) return filmMap[raw].code;
+
+            const parts = raw.split(/\s+/).filter(Boolean);
+
+            const pureNumbers = [];
+            const codeParts = [];
+
+            for (const part of parts) {
+                const cleaned = part.replace(/[^A-Za-z0-9]/g, '');
+                if (!cleaned) continue;
+
+                // Pure ISO token like 100 / 125 / 400
+                if (/^\d+$/.test(cleaned)) {
+                    pureNumbers.push(cleaned);
+                    continue;
+                }
+
+                // Mixed token like HP5 / 400D / 800T / ECN2
+                if (/[A-Za-z]/.test(cleaned) && /\d/.test(cleaned)) {
+                    codeParts.push(cleaned.toUpperCase());
+                    continue;
+                }
+
+                // Pure word like Kodak / Pro / Image
+                codeParts.push(cleaned.charAt(0).toUpperCase());
+            }
+
+            const iso = pureNumbers.length ? pureNumbers[pureNumbers.length - 1] : '';
+            const result = (codeParts.join('') + iso).slice(0, 12);
+
+            return result || 'FILM';
+        }
+
+        function renamedFileName(item, seq) {
+            const auto = document.getElementById('autoRename').checked;
+            const ext = fileExt(item.file.name) || 'jpg';
+            if (!auto) return item.file.name;
+
+            const normalizedDate = normalizeExifDate(item.staged?.date || getExifDateValue(item));
+            const ymd = normalizedDate ? normalizedDate.slice(0, 10).replace(/:/g, '') : 'YYYYMMDD';
+            const cam = compactCameraCode(pickCameraValue(item) || $camera());
+            const film = compactFilmCode(effectiveFilm(item) || $film());
+            const prefix = $prefix() ? sanitizePart($prefix()) + '_' : '';
+            const suffix = $suffix() ? '_' + sanitizePart($suffix()) : '';
+            return `${prefix}${ymd}_${cam}_${film}_${String(seq).padStart(3, '0')}${suffix}.${ext}`;
+        }
+
+        function toExifDate(dateStr) {
+            return normalizeExifDate(dateStr);
+        }
+
+        function parseGpsPair(raw) {
+            const match = String(raw || '').match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+            if (!match) return null;
+            return { lat: Number(match[1]), lon: Number(match[2]) };
+        }
+
+        function degToDmsRational(deg) {
+            const abs = Math.abs(Number(deg));
+            const d = Math.floor(abs);
+            const minFloat = (abs - d) * 60;
+            const m = Math.floor(minFloat);
+            const s = Math.round((minFloat - m) * 60 * 100);
+            return [[d, 1], [m, 1], [s, 100]];
+        }
+
+        async function fileToDataURL(file) {
+            return await new Promise((resolve, reject) => {
+                const fr = new FileReader();
+                fr.onload = () => resolve(fr.result);
+                fr.onerror = reject;
+                fr.readAsDataURL(file);
+            });
+        }
+
+        async function loadImageFromFile(file) {
+            return await new Promise((resolve, reject) => {
+                const url = URL.createObjectURL(file);
+                const img = new Image();
+                img.onload = () => {
+                    URL.revokeObjectURL(url);
+                    resolve(img);
+                };
+                img.onerror = (error) => {
+                    URL.revokeObjectURL(url);
+                    reject(error);
+                };
+                img.src = url;
+            });
+        }
+
+        async function applyRotationToJpeg(file, rotationDeg) {
+            const deg = ((Number(rotationDeg) || 0) % 360 + 360) % 360;
+            if (!deg) return file;
+
+            const img = await loadImageFromFile(file);
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            if (deg === 90 || deg === 270) {
+                canvas.width = img.height;
+                canvas.height = img.width;
+            } else {
+                canvas.width = img.width;
+                canvas.height = img.height;
+            }
+
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.rotate(deg * Math.PI / 180);
+            ctx.drawImage(img, -img.width / 2, -img.height / 2);
+
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.95));
+            return new File([blob], file.name, { type: 'image/jpeg' });
+        }
+
+        async function writeExifToJpeg(file, item) {
+            const rotatedFile = await applyRotationToJpeg(file, item.staged?.rot ?? item.rotation ?? 0);
+            const dataUrl = await fileToDataURL(rotatedFile);
+            let exifObj;
+
+            try {
+                exifObj = piexif.load(dataUrl);
+            } catch (_) {
+                exifObj = { '0th': {}, Exif: {}, GPS: {}, '1st': {}, thumbnail: null };
+            }
+
+            exifObj['0th'][piexif.ImageIFD.Make] = (pickCameraValue(item) || $camera()).split(' ').slice(0, 1).join('') || 'Film';
+            exifObj['0th'][piexif.ImageIFD.Model] = pickCameraValue(item) || $camera();
+            exifObj['0th'][piexif.ImageIFD.Software] = 'FilmTagger by João Fernandes [https://github.com/MrBroccoliJP/FilmTagger]';
+            exifObj['0th'][piexif.ImageIFD.ImageDescription] = effectiveFilm(item) || '';
+            exifObj['0th'][piexif.ImageIFD.Orientation] = 1;
+
+            const globalTags = composedGlobalTags(item).join('; ');
+            if (globalTags) {
+                exifObj['0th'][piexif.ImageIFD.Artist] = globalTags;
+                exifObj['0th'][piexif.ImageIFD.XPKeywords] = Array.from(globalTags + '\u0000').map(ch => ch.charCodeAt(0)).flatMap(code => [code, 0]);
+            }
+
+            const lens = pickLensValue(item) || $lens();
+            if (lens) exifObj['Exif'][piexif.ExifIFD.LensModel] = lens;
+
+            const isoNum = Number.parseInt(item.staged?.iso || $iso(), 10);
+            if (!Number.isNaN(isoNum) && isoNum > 0) exifObj['Exif'][piexif.ExifIFD.ISOSpeedRatings] = isoNum;
+
+            const exifDate = toExifDate(item.staged?.date || getExifDateValue(item));
+            if (exifDate) {
+                exifObj['0th'][piexif.ImageIFD.DateTime] = exifDate;
+                exifObj['Exif'][piexif.ExifIFD.DateTimeOriginal] = exifDate;
+                exifObj['Exif'][piexif.ExifIFD.DateTimeDigitized] = exifDate;
+            }
+
+            const gpsPair = parseGpsPair(item.staged?.gps || gpsString(item));
+            if (gpsPair) {
+                exifObj['GPS'][piexif.GPSIFD.GPSLatitudeRef] = gpsPair.lat >= 0 ? 'N' : 'S';
+                exifObj['GPS'][piexif.GPSIFD.GPSLatitude] = degToDmsRational(gpsPair.lat);
+                exifObj['GPS'][piexif.GPSIFD.GPSLongitudeRef] = gpsPair.lon >= 0 ? 'E' : 'W';
+                exifObj['GPS'][piexif.GPSIFD.GPSLongitude] = degToDmsRational(gpsPair.lon);
+            }
+
+            const exifBytes = piexif.dump(exifObj);
+            const newDataUrl = piexif.insert(exifBytes, dataUrl);
+            const response = await fetch(newDataUrl);
+            return await response.blob();
+        }
+
+        async function buildOutputFile(item, seq) {
+            const ext = fileExt(item.file.name);
+            const outName = renamedFileName(item, seq);
+
+            if (ext === 'jpg' || ext === 'jpeg') {
+                const blob = await writeExifToJpeg(item.file, item);
+                return new File([blob], outName, { type: 'image/jpeg' });
+            }
+
+            return new File([item.file], outName, { type: item.file.type || 'application/octet-stream' });
+        }
+
+        function triggerDownload(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        // ─── Actions ─────────────────────────────────────────────────────────────────
+        document.getElementById('btnClearStaged').addEventListener('click', () => {
+            const targets = checkedIndexes();
+            if (!targets.length) { alert('No files checked.'); return; }
+            targets.forEach(i => {
+                stagedFiles[i].staged = emptyStaged();
+                stagedFiles[i].status = stagedFiles[i].exif ? 'Parsed' : (stagedFiles[i].exif === null && stagedFiles[i].status !== 'Loaded' ? 'No EXIF' : 'Loaded');
+            });
+            renderTable();
+            if (selectedIndex >= 0) renderPreview(selectedIndex);
+        });
+
+        document.getElementById('btnWriteAll').addEventListener('click', async () => {
+            const toWrite = stagedFiles.filter(f => f.status === 'Staged');
+            if (!toWrite.length) {
+                alert('No staged changes to write. Use the Save buttons in each group after checking rows.');
+                return;
+            }
+
+            const unsupported = toWrite.filter(f => !['jpg', 'jpeg'].includes(fileExt(f.file.name)));
+            if (unsupported.length) {
+                const names = unsupported.slice(0, 5).map(f => f.file.name).join(' • ');
+                const extra = unsupported.length > 5 ? `…and ${unsupported.length - 5} more.` : '';
+                alert(`Only JPEG files get in-browser EXIF edits right now. These files will still be added to the ZIP unchanged except for renaming:• ${names}${extra}`);
+            }
+
+            setProgress(0, `Writing ${toWrite.length} file(s)…`);
+            setSystemPill('Writing', 'busy');
+
+            const zip = new JSZip();
+            let success = 0;
+            const failures = [];
+
+            for (let i = 0; i < toWrite.length; i++) {
+                const item = toWrite[i];
+                try {
+                    const outFile = await buildOutputFile(item, i + 1);
+                    zip.file(outFile.name, outFile);
+                    item.status = 'Written';
+                    item.writtenName = outFile.name;
+                    success++;
+                } catch (err) {
+                    console.error('Write failed for', item.file.name, err);
+                    failures.push(item.file.name);
+                    item.status = 'Error';
+                }
+
+                setProgress(Math.round(((i + 1) / toWrite.length) * 100), `Processed ${i + 1}/${toWrite.length}`);
+                renderTable();
+            }
+
+            if (!success) {
+                setSystemPill('Ready', 'done');
+                setProgress(0, 'No files were written');
+                alert('Nothing could be exported. Check the console for details.');
+                return;
+            }
+
+            const zipBlob = await zip.generateAsync({ type: 'blob' });
+            triggerDownload(zipBlob, `film-exif-export-${new Date().toISOString().slice(0, 10)}.zip`);
+
+            toWrite.forEach(item => {
+                if (item.status === 'Written') {
+                    item.staged = emptyStaged();
+                }
+            });
+
+            renderTable();
+            if (selectedIndex >= 0) renderPreview(selectedIndex);
+            setProgress(100, `Done — downloaded ${success} file(s)`);
+            setSystemPill('Ready', 'done');
+
+            const failMsg = failures.length
+                ? ` Failed: ${failures.length} file(s) • ${failures.slice(0, 5).join(' • ')}${failures.length > 5 ? `…and ${failures.length - 5} more.` : ''}`
+                : '';
+            alert(`✓ Download ready. Exported ${success} file(s) as a ZIP.${failMsg}`);
+        });
+    </script>
+</body>
+
+</html>
