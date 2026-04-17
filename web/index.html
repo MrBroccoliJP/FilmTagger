@@ -169,9 +169,30 @@
         }
 
 
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
         .card h2 {
             margin: 0 0 16px;
             font-size: 20px;
+        }
+
+        .btn-card-clear {
+            min-height: 34px;
+            padding: 7px 11px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 700;
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .btn-card-clear:hover {
+            background: rgba(255, 255, 255, 0.12);
         }
 
         .stack {
@@ -901,9 +922,12 @@
 
         <div class="content">
             <aside class="sidebar primary-sidebar">
-                <!-- ── Hardware / Emulsion ────────────────────────────── -->
+                <!-- ── Hardware  ────────────────────────────── -->
                 <section class="card" id="card-hardware">
-                    <h2>Hardware / Emulsion</h2>
+                    <div class="card-header">
+                        <h2>Hardware</h2>
+                        <button class="btn btn-card-clear btn-toolbar-danger" id="clearHardware" type="button">Clear</button>
+                    </div>
                     <div class="stack">
                         <div class="combo-host">
                             <label class="label" for="camera">Camera Body</label>
@@ -930,7 +954,10 @@
 
                 <!-- ── Temporal Data ───────────────────────────────────── -->
                 <section class="card" id="card-temporal">
-                    <h2>Temporal Data</h2>
+                    <div class="card-header">
+                        <h2>Temporal Data</h2>
+                        <button class="btn btn-card-clear btn-toolbar-danger" id="clearTemporal" type="button">Clear</button>
+                    </div>
                     <div class="stack">
                         <div class="grid-3" style="grid-template-columns: 1fr 1fr 1fr 52px;">
                             <div>
@@ -960,7 +987,10 @@
                 <!-- ── GPS / Location ─────────────────────────────────── -->
 
                 <section class="card" id="card-gps">
-                    <h2>GPS / Location</h2>
+                    <div class="card-header">
+                        <h2>GPS / Location</h2>
+                        <button class="btn btn-card-clear btn-toolbar-danger" id="clearGPS" type="button">Clear</button>
+                    </div>
                     <div class="stack">
                         <div>
                             <label class="label" for="coords">Paste Decimal Coordinates</label>
@@ -1052,8 +1082,7 @@
                                         type="button">Check none</button>
                                 </div>
                                 <div class="table-tools-group">
-                                    <button class="btn btn-toolbar btn-toolbar-danger" id="btnClear" type="button">Clear
-                                        table</button>
+                                    <button class="btn btn-toolbar btn-toolbar-danger" id="btnClear" type="button">Clear table</button>
                                 </div>
                             </div>
 
@@ -1126,8 +1155,7 @@
                                 <h2>Actions</h2>
                                 <div class="stack">
                                     <button class="btn btn-toolbar-danger" id="btnClearStaged" type="button" style="width:100%">Clear All Changes</button>
-                                    <button class="btn btn-accent" id="btnWriteAll" type="button"
-                                        style="width:100%; padding-top: 14px; padding-bottom: 14px;">🎞️ Write All Files Changes</button>
+                                    <button class="btn btn-accent" id="btnWriteAll" type="button" style="width:100%; padding-top: 14px; padding-bottom: 14px;">🎞️ Write All Changes</button>
                                 </div>
                             </section>
 
@@ -2081,6 +2109,35 @@
             if (selectedIndex >= 0) renderPreview(selectedIndex);
             return true;
         }
+
+
+        function clearFieldValues(ids) {
+            ids.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                if (el.type === 'checkbox' || el.type === 'radio') {
+                    el.checked = false;
+                } else {
+                    el.value = '';
+                }
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+        }
+
+
+        document.getElementById('clearHardware').addEventListener('click', () => {
+            clearFieldValues(['camera', 'lens', 'iso', 'film']);
+            updateRenamePreview();
+        });
+
+        document.getElementById('clearTemporal').addEventListener('click', () => {
+            clearFieldValues(['day', 'month', 'year']);
+        });
+
+        document.getElementById('clearGPS').addEventListener('click', () => {
+            clearFieldValues(['coords', 'city', 'region', 'country']);
+        });
 
         // ─── Save: Hardware / Emulsion ───────────────────────────────────────────────
         document.getElementById('saveHardware').addEventListener('click', function () {
