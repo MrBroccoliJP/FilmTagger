@@ -1511,11 +1511,37 @@
             }).join('').slice(0, 12) || fallback;
         }
 
-        function getKeywordList(exif) {
-            const raw = exif?.Keywords ?? exif?.XPKeywords;
+        function normalizeKeywordSource(raw) {
             if (!raw) return [];
-            if (Array.isArray(raw)) return raw.map(v => String(v || '').trim()).filter(Boolean);
-            return String(raw).split(/[;,]/).map(v => v.trim()).filter(Boolean);
+            if (Array.isArray(raw)) {
+                return raw.map(v => String(v || '').replace(/\u0000/g, '').trim()).filter(Boolean);
+            }
+            return String(raw)
+                .replace(/\u0000/g, '')
+                .split(/[;,]|\s\|\s/)
+                .map(v => v.trim())
+                .filter(Boolean);
+        }
+
+        function getKeywordList(exif) {
+            if (!exif) return [];
+
+            const preferredSources = [
+                exif.XPKeywords,
+                exif.Artist,
+                exif.UserComment,
+                exif.ImageDescription,
+                exif.Subject,
+                exif.Title,
+                exif.Keywords,
+            ];
+
+            for (const source of preferredSources) {
+                const values = normalizeKeywordSource(source);
+                if (values.length) return values;
+            }
+
+            return [];
         }
 
         function extractFilmFromExif(exif) {
@@ -1573,7 +1599,7 @@
 
         function composedGlobalTags(item) {
             const parts = [];
-            const film = effectiveFilm(item) || $film();
+            const film = effectiveFilm(item);
             if (film) parts.push(film);
             const scan = currentScanTag();
             if (scan) parts.push(scan);
@@ -2366,6 +2392,92 @@
             });
         }
 
+        function concatUint8Arrays(chunks) {
+            const total = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+            const out = new Uint8Array(total);
+            let offset = 0;
+            for (const chunk of chunks) {
+                out.set(chunk, offset);
+                offset += chunk.length;
+            }
+            return out;
+        }
+
+        function shouldStripJpegSegment(marker, segmentBytes) {
+            if (marker === 0xED) return true;
+            if (marker !== 0xE1 || !segmentBytes || !segmentBytes.length) return false;
+
+            const header = Array.from(segmentBytes.slice(0, 64))
+                .map(b => String.fromCharCode(b))
+                .join('');
+
+            return header.startsWith('Exif  ')
+                || header.startsWith('http://ns.adobe.com/xap/1.0/')
+                || header.startsWith('XMP ');
+        }
+
+        async function stripJpegMetadataSegments(file) {
+            const buffer = await file.arrayBuffer();
+            const bytes = new Uint8Array(buffer);
+            if (bytes.length < 4 || bytes[0] !== 0xFF || bytes[1] !== 0xD8) return file;
+
+            const chunks = [bytes.slice(0, 2)];
+            let offset = 2;
+
+            while (offset < bytes.length) {
+                if (bytes[offset] !== 0xFF) {
+                    chunks.push(bytes.slice(offset));
+                    break;
+                }
+
+                let markerOffset = offset;
+                while (markerOffset < bytes.length && bytes[markerOffset] === 0xFF) markerOffset++;
+                if (markerOffset >= bytes.length) break;
+
+                const marker = bytes[markerOffset];
+                const markerBytes = bytes.slice(offset, markerOffset + 1);
+                offset = markerOffset + 1;
+
+                if (marker === 0xD9 || marker === 0xDA) {
+                    chunks.push(markerBytes);
+                    chunks.push(bytes.slice(offset));
+                    break;
+                }
+
+                if (offset + 2 > bytes.length) {
+                    chunks.push(markerBytes);
+                    break;
+                }
+
+                const segmentLength = (bytes[offset] << 8) | bytes[offset + 1];
+                if (segmentLength < 2) {
+                    chunks.push(markerBytes);
+                    chunks.push(bytes.slice(offset));
+                    break;
+                }
+
+                const segmentStart = offset + 2;
+                const segmentEnd = offset + segmentLength;
+                if (segmentEnd > bytes.length) {
+                    chunks.push(markerBytes);
+                    chunks.push(bytes.slice(offset));
+                    break;
+                }
+
+                const lengthBytes = bytes.slice(offset, offset + 2);
+                const segmentBytes = bytes.slice(segmentStart, segmentEnd);
+                if (!shouldStripJpegSegment(marker, segmentBytes)) {
+                    chunks.push(markerBytes);
+                    chunks.push(lengthBytes);
+                    chunks.push(segmentBytes);
+                }
+                offset = segmentEnd;
+            }
+
+            const cleaned = concatUint8Arrays(chunks);
+            return new File([cleaned], file.name, { type: file.type || 'image/jpeg' });
+        }
+
         async function applyRotationToJpeg(file, rotationDeg) {
             const deg = ((Number(rotationDeg) || 0) % 360 + 360) % 360;
             if (!deg) return file;
@@ -2391,7 +2503,8 @@
         }
 
         async function writeExifToJpeg(file, item) {
-            const rotatedFile = await applyRotationToJpeg(file, item.staged?.rot ?? item.rotation ?? 0);
+            const cleanedFile = await stripJpegMetadataSegments(file);
+            const rotatedFile = await applyRotationToJpeg(cleanedFile, item.staged?.rot ?? item.rotation ?? 0);
             const dataUrl = await fileToDataURL(rotatedFile);
             let exifObj;
 
@@ -2404,13 +2517,20 @@
             exifObj['0th'][piexif.ImageIFD.Make] = (pickCameraValue(item) || $camera()).split(' ').slice(0, 1).join('') || 'Film';
             exifObj['0th'][piexif.ImageIFD.Model] = pickCameraValue(item) || $camera();
             exifObj['0th'][piexif.ImageIFD.Software] = 'FilmTagger by João Fernandes [https://github.com/MrBroccoliJP/FilmTagger]';
-            exifObj['0th'][piexif.ImageIFD.ImageDescription] = effectiveFilm(item) || '';
             exifObj['0th'][piexif.ImageIFD.Orientation] = 1;
 
-            const globalTags = composedGlobalTags(item).join('; ');
+            delete exifObj['0th'][piexif.ImageIFD.Artist];
+            delete exifObj['0th'][piexif.ImageIFD.XPKeywords];
+            delete exifObj['0th'][piexif.ImageIFD.ImageDescription];
+            delete exifObj['Exif'][piexif.ExifIFD.UserComment];
+
+            const globalTagsList = composedGlobalTags(item);
+            const globalTags = globalTagsList.join('; ');
             if (globalTags) {
                 exifObj['0th'][piexif.ImageIFD.Artist] = globalTags;
+                exifObj['0th'][piexif.ImageIFD.ImageDescription] = globalTagsList[0] || '';
                 exifObj['0th'][piexif.ImageIFD.XPKeywords] = Array.from(globalTags + '\u0000').map(ch => ch.charCodeAt(0)).flatMap(code => [code, 0]);
+                exifObj['Exif'][piexif.ExifIFD.UserComment] = `ASCII\u0000\u0000\u0000${globalTags}`;
             }
 
             const lens = pickLensValue(item) || $lens();
