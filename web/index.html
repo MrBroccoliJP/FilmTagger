@@ -165,7 +165,26 @@
         .workspace-rail {
             position: sticky;
             top: 24px;
+            height: calc(100vh - 48px);
             max-height: calc(100vh - 48px);
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-right: 6px;
+            scrollbar-gutter: stable;
+        }
+
+        .workspace-rail > * {
+            flex-shrink: 0;
+        }
+
+        .workspace-rail::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        .workspace-rail::-webkit-scrollbar-thumb {
+            background: rgba(139, 92, 246, 0.5);
+            border-radius: 999px;
+            border: 2px solid rgba(0, 0, 0, 0.08);
         }
 
 
@@ -360,6 +379,22 @@
         .btn-save {
             position: relative;
             overflow: hidden;
+        }
+
+        .section-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 8px;
+        }
+
+        .section-actions .btn {
+            padding-inline: 10px;
+        }
+
+        .btn-lock.is-locked {
+            background: rgba(139, 92, 246, 0.24);
+            border-color: var(--accent-border);
+            color: var(--accent-text);
         }
 
         .btn-icon-row {
@@ -779,6 +814,77 @@
             height: auto;
             object-fit: contain;
             transform-origin: center center;
+            cursor: zoom-in;
+        }
+
+        .preview-lightbox {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: rgba(5, 5, 10, 0.72);
+            backdrop-filter: blur(8px);
+        }
+
+        .preview-lightbox.is-open {
+            display: flex;
+        }
+
+        .preview-lightbox-panel {
+            width: min(1100px, calc(100vw - 48px));
+            height: min(820px, calc(100vh - 48px));
+            padding: 20px;
+            border: 1px solid var(--border);
+            border-radius: 22px;
+            background: var(--panel);
+            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr) auto;
+            gap: 16px;
+        }
+
+        .preview-lightbox-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .preview-lightbox-media {
+            min-height: 0;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 16px;
+            background: #111118;
+            border: 1px solid var(--border);
+        }
+
+        .preview-lightbox img {
+            display: block;
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            transform-origin: center;
+        }
+
+        .preview-lightbox-close {
+            width: 44px;
+            height: 44px;
+            min-width: 44px;
+            padding: 0;
+            border-radius: 50%;
+            font-size: 24px;
+        }
+
+        .preview-lightbox-controls {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
         }
 
         .preview-controls {
@@ -844,11 +950,17 @@
                 grid-template-columns: 1fr;
             }
 
+            .workspace-layout {
+                grid-template-columns: 1fr;
+            }
+
             .primary-sidebar,
             .action-sidebar,
-            .sticky-preview {
+            .sticky-preview,
+            .workspace-rail {
                 position: static;
                 height: auto;
+                max-height: none;
                 overflow: visible;
                 padding-right: 0;
             }
@@ -881,6 +993,20 @@
             .content,
             .topbar-inner {
                 width: min(100% - 20px, 1440px);
+            }
+
+            .preview-lightbox {
+                padding: 10px;
+            }
+
+            .preview-lightbox-panel {
+                width: calc(100vw - 20px);
+                height: calc(100vh - 20px);
+                padding: 14px;
+            }
+
+            .preview-lightbox-controls {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
             }
         }
     </style>
@@ -929,9 +1055,15 @@
                         <button class="btn btn-card-clear btn-toolbar-danger" id="clearHardware" type="button">Clear</button>
                     </div>
                     <div class="stack">
-                        <div class="combo-host">
-                            <label class="label" for="camera">Camera Body</label>
-                            <input id="camera" class="field" autocomplete="off" placeholder="Canon A-1" />
+                        <div class="grid-2" style="grid-template-columns: minmax(0, 1fr) 82px;">
+                            <div class="combo-host">
+                                <label class="label" for="camera">Camera Body</label>
+                                <input id="camera" class="field" autocomplete="off" placeholder="Canon A-1" />
+                            </div>
+                            <div>
+                                <label class="label" for="cameraCode">Code</label>
+                                <input id="cameraCode" class="field" placeholder="Code" maxlength="16" size="5" />
+                            </div>
                         </div>
                         <div class="combo-host">
                             <label class="label" for="lens">Lens Optics</label>
@@ -948,7 +1080,11 @@
                                 <input id="film" class="field" autocomplete="off" placeholder="Kodak Gold 200" />
                             </div>
                         </div>
-                        <button class="btn btn-save" id="saveHardware" type="button">Save</button>
+                        <div class="section-actions">
+                            <button class="btn btn-save" id="saveHardwareSelected" type="button">Save selected</button>
+                            <button class="btn btn-save" id="saveHardwareAll" type="button">Save all</button>
+                            <button class="btn btn-lock" id="lockHardware" type="button" aria-pressed="false">Lock data</button>
+                        </div>
                     </div>
                 </section>
 
@@ -980,7 +1116,11 @@
                                     style="position:absolute; opacity:0; pointer-events:none; width:1px; height:1px;" />
                             </div>
                         </div>
-                        <button class="btn btn-save" id="saveTemporal" type="button">Save</button>
+                        <div class="section-actions">
+                            <button class="btn btn-save" id="saveTemporalSelected" type="button">Save selected</button>
+                            <button class="btn btn-save" id="saveTemporalAll" type="button">Save all</button>
+                            <button class="btn btn-lock" id="lockTemporal" type="button" aria-pressed="false">Lock data</button>
+                        </div>
                     </div>
                 </section>
 
@@ -1013,7 +1153,11 @@
                                 <input id="country" class="field" placeholder="Portugal" />
                             </div>
                         </div>
-                        <button class="btn btn-save" id="saveGPS" type="button">Save</button>
+                        <div class="section-actions">
+                            <button class="btn btn-save" id="saveGPSSelected" type="button">Save selected</button>
+                            <button class="btn btn-save" id="saveGPSAll" type="button">Save all</button>
+                            <button class="btn btn-lock" id="lockGPS" type="button" aria-pressed="false">Lock data</button>
+                        </div>
                     </div>
                 </section>
 
@@ -1173,6 +1317,27 @@
         </div>
     </div>
 
+    <div class="preview-lightbox" id="previewLightbox" role="dialog" aria-modal="true" aria-label="Large image preview">
+        <div class="preview-lightbox-panel">
+            <div class="preview-lightbox-header">
+                <div>
+                    <h2 style="margin:0;">Image Preview</h2>
+                    <div class="eyebrow" id="previewLightboxLabel" style="margin-top:6px;"></div>
+                </div>
+                <button class="btn preview-lightbox-close" id="previewLightboxClose" type="button" aria-label="Close preview">×</button>
+            </div>
+            <div class="preview-lightbox-media">
+                <img id="previewLightboxImage" alt="Large preview" />
+            </div>
+            <div class="preview-lightbox-controls">
+                <button class="btn" id="largePreviewRotLeft" type="button">↶ Left</button>
+                <button class="btn" id="largePreviewRotRight" type="button">Right ↷</button>
+                <button class="btn" id="largePreviewRotReset" type="button">Reset</button>
+                <button class="btn btn-save" id="largePreviewRotApply" type="button">Set All</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/exifr/dist/full.umd.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/piexifjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -1187,6 +1352,7 @@
          *   status:  'Loaded'|'Parsing'|'Parsed'|'No EXIF'|'Staged',
          *   staged:  {              // per-column override from Save buttons
          *     camera:  string|null,
+         *     cameraCode: string|null,
          *     lens:    string|null,
          *     film:    string|null,
          *     gps:     string|null,
@@ -1200,11 +1366,14 @@
         let selectedIndex = -1;
         let previewUrl = null;
         let currentRotDeg = 0;   // live rotation UI state
+        const sectionLocks = { hardware: false, temporal: false, gps: false };
 
         // ─── DOM refs ────────────────────────────────────────────────────────────────
         const fileInput = document.getElementById('fileInput');
         const tableBody = document.getElementById('tableBody');
         const previewBox = document.getElementById('previewBox');
+        const previewLightbox = document.getElementById('previewLightbox');
+        const previewLightboxImage = document.getElementById('previewLightboxImage');
         const previewLabel = document.getElementById('previewLabel');
         const checkAllBox = document.getElementById('checkAll');
         const progressBar = document.getElementById('progressBar');
@@ -1232,6 +1401,7 @@
         const $country = () => document.getElementById('country').value.trim();
         const $prefix = () => document.getElementById('prefix').value.trim();
         const $suffix = () => document.getElementById('suffix').value.trim();
+        const $cameraCode = () => document.getElementById('cameraCode').value.trim();
 
         // ─── Helpers ─────────────────────────────────────────────────────────────────
         function checkedIndexes() {
@@ -1239,7 +1409,7 @@
         }
 
         function emptyStaged() {
-            return { camera: null, lens: null, film: null, iso: null, gps: null, date: null, dateTaken: null, dateCreated: null, tags: null, rot: null };
+            return { camera: null, cameraCode: null, lens: null, film: null, iso: null, gps: null, date: null, dateTaken: null, dateCreated: null, tags: null, rot: null };
         }
 
         function hasExplicitStagedChanges(item) {
@@ -1405,6 +1575,7 @@
             'Canon AV-1': 'CAV1',
             'Canon F-1': 'CF1',
             'Canon AF-35ML': 'CAF35ML', // requested
+            'Canon Prima BF-8': 'CPBF8',
 
             // Nikon
             'Nikon FM2': 'NFM2',
@@ -1463,6 +1634,17 @@
             'Lomography 800': { code: 'L800', iso: '800' }
         };
 
+        function compactCode(value, map, fallback) {
+            const raw = String(value || '').trim();
+            if (!raw) return fallback;
+            if (map[raw]) return map[raw];
+            return raw.replace(/[^A-Za-z0-9]+/g, ' ').trim().split(/\s+/).map(part => {
+                const digits = part.match(/\d+/g)?.join('') || '';
+                const letters = part.replace(/[^A-Za-z]/g, '').slice(0, 2);
+                return (letters + digits).toUpperCase();
+            }).join('').slice(0, 12) || fallback;
+        }
+
         const lensOptions = [
             // Canon FD
             'Canon FD 50mm f/1.4',
@@ -1499,17 +1681,6 @@
             'Fixed Lens 38mm (Point & Shoot)',
             'Fixed Lens 35mm (Point & Shoot)'
         ];
-
-        function compactCode(value, map, fallback) {
-            const raw = String(value || '').trim();
-            if (!raw) return fallback;
-            if (map[raw]) return map[raw];
-            return raw.replace(/[^A-Za-z0-9]+/g, ' ').trim().split(/\s+/).map(part => {
-                const digits = part.match(/\d+/g)?.join('') || '';
-                const letters = part.replace(/[^A-Za-z]/g, '').slice(0, 2);
-                return (letters + digits).toUpperCase();
-            }).join('').slice(0, 12) || fallback;
-        }
 
         function normalizeKeywordSource(raw) {
             if (!raw) return [];
@@ -1551,6 +1722,17 @@
         function pickCameraValue(item) {
             if (item?.staged && item.staged.camera !== null && item.staged.camera !== undefined) return item.staged.camera;
             return item.exif?.Model || [item.exif?.Make, item.exif?.Model].filter(Boolean).join(' ').trim() || '';
+        }
+
+        function normalizeCameraCode(value) {
+            return sanitizePart(value).replace(/_/g, '').slice(0, 16);
+        }
+
+        function pickCameraCodeValue(item) {
+            if (item?.staged && item.staged.cameraCode !== null && item.staged.cameraCode !== undefined) {
+                return normalizeCameraCode(item.staged.cameraCode) || 'CAM';
+            }
+            return compactCode(pickCameraValue(item), cameraCodeMap, 'CAM');
         }
 
         function pickLensValue(item) {
@@ -1614,12 +1796,17 @@
                 return;
             }
 
-            const p = $prefix() ? $prefix() + '_' : '';
-            const s = $suffix() ? '_' + $suffix() : '';
-            const cam = compactCode($camera(), cameraCodeMap, 'CAM');
-            const film = compactFilmCode($film());
+            const selected = selectedIndex >= 0 ? stagedFiles[selectedIndex] : null;
+            if (selected?.file) {
+                renamePreview.textContent = renamedFileName(selected, selectedIndex + 1);
+                return;
+            }
 
-            renamePreview.textContent = `${p}YYYYMMDD_${cam}_${film}_NNN${s}.ext`;
+            const prefix = $prefix() ? sanitizePart($prefix()) : '';
+            const suffix = $suffix() ? sanitizePart($suffix()) : '';
+            const cam = normalizeCameraCode($cameraCode()) || compactCode($camera(), cameraCodeMap, 'CAM');
+            const film = compactFilmCode($film());
+            renamePreview.textContent = `${[prefix, 'YYYYMMDD', cam, film, 'NNN', suffix].filter(Boolean).join('_')}.ext`;
         }
 
         function refreshRenameDependentUi() {
@@ -1627,11 +1814,16 @@
             if (stagedFiles.length) renderTable();
         }
 
-        ['prefix', 'suffix', 'camera', 'film'].forEach(id =>
+        ['prefix', 'suffix', 'cameraCode', 'film'].forEach(id =>
             document.getElementById(id)?.addEventListener('input', refreshRenameDependentUi)
         );
+        function syncCameraCodeFromName() {
+            document.getElementById('cameraCode').value = compactCode($camera(), cameraCodeMap, 'CAM');
+            refreshRenameDependentUi();
+        }
+        document.getElementById('camera').addEventListener('input', syncCameraCodeFromName);
         document.getElementById('film').addEventListener('change', refreshRenameDependentUi);
-        document.getElementById('camera').addEventListener('change', refreshRenameDependentUi);
+        document.getElementById('camera').addEventListener('change', syncCameraCodeFromName);
         document.getElementById('autoRename').addEventListener('change', refreshRenameDependentUi);
         updateRenamePreview();
         updateFileDropzoneVisibility();
@@ -1789,47 +1981,92 @@
             previewBox.innerHTML = `<div class="preview-media"><img src="${previewUrl}" alt="Preview" style="transform: rotate(${rot}deg); transition: transform 0.2s ease;"></div>`;
             previewLabel.textContent = item.file.name;
             currentRotDeg = rot;
+            if (previewLightbox.classList.contains('is-open')) {
+                previewLightboxImage.src = previewUrl;
+                previewLightboxImage.style.transform = `rotate(${rot}deg)`;
+                document.getElementById('previewLightboxLabel').textContent = item.file.name;
+            }
             updateRotDisplay();
         }
+
+        function openLargePreview() {
+            if (!previewUrl || selectedIndex < 0) return;
+            previewLightboxImage.src = previewUrl;
+            previewLightboxImage.style.transform = `rotate(${currentRotDeg}deg)`;
+            document.getElementById('previewLightboxLabel').textContent = stagedFiles[selectedIndex]?.file?.name || '';
+            previewLightbox.classList.add('is-open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeLargePreview() {
+            previewLightbox.classList.remove('is-open');
+            previewLightboxImage.removeAttribute('src');
+            document.body.style.overflow = '';
+        }
+
+        previewBox.addEventListener('click', (event) => {
+            if (event.target.closest('img')) openLargePreview();
+        });
+        document.getElementById('previewLightboxClose').addEventListener('click', closeLargePreview);
+        previewLightbox.addEventListener('click', (event) => {
+            if (event.target === previewLightbox) closeLargePreview();
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && previewLightbox.classList.contains('is-open')) closeLargePreview();
+        });
+        document.getElementById('largePreviewRotLeft').addEventListener('click', () => {
+            document.getElementById('previewRotLeft').click();
+        });
+        document.getElementById('largePreviewRotRight').addEventListener('click', () => {
+            document.getElementById('previewRotRight').click();
+        });
+        document.getElementById('largePreviewRotReset').addEventListener('click', () => {
+            document.getElementById('previewRotReset').click();
+        });
+        document.getElementById('largePreviewRotApply').addEventListener('click', function () {
+            document.getElementById('previewRotApply').click();
+            flashSaved(this);
+        });
 
         function populateEditorsFromItem(item) {
             if (!item) return;
 
-            const cam = pickCameraValue(item);
-            document.getElementById('camera').value = cam || '';
+            if (!sectionLocks.hardware) {
+                const cam = pickCameraValue(item);
+                document.getElementById('camera').value = cam || '';
+                document.getElementById('cameraCode').value = pickCameraCodeValue(item);
 
-            const lens = pickLensValue(item);
-            document.getElementById('lens').value = lens || '';
+                const lens = pickLensValue(item);
+                document.getElementById('lens').value = lens || '';
 
-            const film = effectiveFilm(item);
-            document.getElementById('film').value = film || '';
+                const film = effectiveFilm(item);
+                document.getElementById('film').value = film || '';
 
-            const parsedIso = item.exif?.ISO || item.exif?.ISOSpeedRatings || '';
-            document.getElementById('iso').value = item.staged?.iso || parsedIso || '';
-
-            const normDate = normalizeExifDate(pickDateValue(item));
-            const m = normDate.match(/^(\d{4}):(\d{2}):(\d{2})/);
-            if (m) {
-                document.getElementById('year').value = m[1];
-                document.getElementById('month').value = m[2];
-                document.getElementById('day').value = m[3];
-            } else {
-                document.getElementById('year').value = '';
-                document.getElementById('month').value = '';
-                document.getElementById('day').value = '';
+                const parsedIso = item.exif?.ISO || item.exif?.ISOSpeedRatings || '';
+                document.getElementById('iso').value = item.staged?.iso || parsedIso || '';
             }
 
-            let gpsParts = { coords: '', city: '', region: '', country: '' };
-            if (item.staged?.gps) {
-                gpsParts = splitGpsParts(item.staged.gps);
-            } else if (item.exif?.latitude != null && item.exif?.longitude != null) {
-                gpsParts.coords = `${item.exif.latitude.toFixed(5)}, ${item.exif.longitude.toFixed(5)}`;
+            if (!sectionLocks.temporal) {
+                const normDate = normalizeExifDate(pickDateValue(item));
+                const m = normDate.match(/^(\d{4}):(\d{2}):(\d{2})/);
+                document.getElementById('year').value = m ? m[1] : '';
+                document.getElementById('month').value = m ? m[2] : '';
+                document.getElementById('day').value = m ? m[3] : '';
             }
 
-            document.getElementById('coords').value = gpsParts.coords;
-            document.getElementById('city').value = gpsParts.city;
-            document.getElementById('region').value = gpsParts.region;
-            document.getElementById('country').value = gpsParts.country;
+            if (!sectionLocks.gps) {
+                let gpsParts = { coords: '', city: '', region: '', country: '' };
+                if (item.staged?.gps) {
+                    gpsParts = splitGpsParts(item.staged.gps);
+                } else if (item.exif?.latitude != null && item.exif?.longitude != null) {
+                    gpsParts.coords = `${item.exif.latitude.toFixed(5)}, ${item.exif.longitude.toFixed(5)}`;
+                }
+
+                document.getElementById('coords').value = gpsParts.coords;
+                document.getElementById('city').value = gpsParts.city;
+                document.getElementById('region').value = gpsParts.region;
+                document.getElementById('country').value = gpsParts.country;
+            }
 
             updateRenamePreview();
         }
@@ -2136,6 +2373,33 @@
             return true;
         }
 
+        function stageAll(patch) {
+            if (!stagedFiles.length) {
+                alert('No files loaded.');
+                return false;
+            }
+            stagedFiles.forEach(item => {
+                Object.assign(item.staged, patch);
+                item.status = 'Staged';
+            });
+            renderTable();
+            if (selectedIndex >= 0) renderPreview(selectedIndex);
+            return true;
+        }
+
+        function bindSectionLock(section, buttonId) {
+            document.getElementById(buttonId).addEventListener('click', function () {
+                sectionLocks[section] = !sectionLocks[section];
+                this.classList.toggle('is-locked', sectionLocks[section]);
+                this.setAttribute('aria-pressed', String(sectionLocks[section]));
+                this.textContent = sectionLocks[section] ? 'Locked' : 'Lock data';
+            });
+        }
+
+        bindSectionLock('hardware', 'lockHardware');
+        bindSectionLock('temporal', 'lockTemporal');
+        bindSectionLock('gps', 'lockGPS');
+
 
         function clearFieldValues(ids) {
             ids.forEach(id => {
@@ -2153,7 +2417,7 @@
 
 
         document.getElementById('clearHardware').addEventListener('click', () => {
-            clearFieldValues(['camera', 'lens', 'iso', 'film']);
+            clearFieldValues(['camera', 'cameraCode', 'lens', 'iso', 'film']);
             updateRenamePreview();
         });
 
@@ -2166,35 +2430,50 @@
         });
 
         // ─── Save: Hardware / Emulsion ───────────────────────────────────────────────
-        document.getElementById('saveHardware').addEventListener('click', function () {
-            const ok = stageChecked({
+        function hardwarePatch() {
+            return {
                 camera: $camera(),
+                cameraCode: normalizeCameraCode($cameraCode()) || compactCode($camera(), cameraCodeMap, 'CAM'),
                 lens: $lens(),
                 film: $film(),
                 iso: $iso(),
-            });
+            };
+        }
+        document.getElementById('saveHardwareSelected').addEventListener('click', function () {
+            const ok = stageSelected(hardwarePatch());
+            if (!ok) alert('Select an image first.');
+            if (ok) flashSaved(this);
+        });
+        document.getElementById('saveHardwareAll').addEventListener('click', function () {
+            const ok = stageAll(hardwarePatch());
             if (ok) flashSaved(this);
         });
 
         // ─── Save: Temporal Data ─────────────────────────────────────────────────────
-        document.getElementById('saveTemporal').addEventListener('click', function () {
+        function temporalPatch() {
             const hasAnyDateInput = !!($year() || $month() || $day());
             const hasCompleteDate = /^\d{4}$/.test($year()) && /^\d{1,2}$/.test($month()) && /^\d{1,2}$/.test($day());
 
             if (hasAnyDateInput && !hasCompleteDate) {
                 alert('Enter a complete date (YYYY, MM, DD) or leave all date fields empty.');
-                return;
+                return null;
             }
 
             const dateStr = hasCompleteDate
                 ? `${$year()}:${$month().padStart(2, '0')}:${$day().padStart(2, '0')} 12:00:00`
                 : '';
 
-            const ok = stageChecked({
+            return {
                 date: dateStr,
                 dateTaken: dateStr,
                 dateCreated: dateStr
-            });
+            };
+        }
+
+        function saveTemporal(button, saveFunction) {
+            const patch = temporalPatch();
+            if (!patch) return null;
+            const ok = saveFunction(patch);
 
             if (ok) {
                 sortFilesByDate();
@@ -2205,17 +2484,33 @@
                     renderPreview(selectedIndex);
                 }
 
-                flashSaved(this);
+                flashSaved(button);
             }
+            return ok;
+        }
+        document.getElementById('saveTemporalSelected').addEventListener('click', function () {
+            const ok = saveTemporal(this, stageSelected);
+            if (ok === false) alert('Select an image first.');
+        });
+        document.getElementById('saveTemporalAll').addEventListener('click', function () {
+            saveTemporal(this, stageAll);
         });
 
         // ─── Save: GPS ───────────────────────────────────────────────────────────────
-        document.getElementById('saveGPS').addEventListener('click', function () {
+        function gpsPatch() {
             const parts = [];
             if ($coords()) parts.push($coords());
             const loc = [$city(), $region(), $country()].filter(Boolean).join(', ');
             if (loc) parts.push(loc);
-            const ok = stageChecked({ gps: parts.join(' | ') || '—' });
+            return { gps: parts.join(' | ') || '—' };
+        }
+        document.getElementById('saveGPSSelected').addEventListener('click', function () {
+            const ok = stageSelected(gpsPatch());
+            if (!ok) alert('Select an image first.');
+            if (ok) flashSaved(this);
+        });
+        document.getElementById('saveGPSAll').addEventListener('click', function () {
+            const ok = stageAll(gpsPatch());
             if (ok) flashSaved(this);
         });
 
@@ -2281,16 +2576,6 @@
                 .toUpperCase();
         }
 
-        function compactCameraCode(value) {
-            const raw = String(value || '').trim();
-            if (!raw) return 'CAM';
-            if (cameraCodeMap[raw]) return cameraCodeMap[raw];
-            const cleaned = sanitizePart(raw).replace(/_/g, '');
-            const brandInitial = (raw.match(/[A-Za-z]/) || ['C'])[0].toUpperCase();
-            const model = cleaned.replace(/^[A-Z]+/, '');
-            return (brandInitial + model).slice(0, 10) || cleaned.slice(0, 10) || 'CAM';
-        }
-
         function compactFilmCode(value) {
             const raw = String(value || '').trim();
             if (!raw) return 'FILM';
@@ -2328,18 +2613,24 @@
             return result || 'FILM';
         }
 
+        function filenameDateCode(item) {
+            const rawDateValue = pickDateValue(item) || currentSidebarDateString();
+            const normalizedDate = rawDateValue ? normalizeExifDate(rawDateValue) : '';
+            if (normalizedDate) return normalizedDate.slice(0, 10).replace(/:/g, '');
+
+            const today = new Date();
+            return `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+        }
+
         function renamedFileName(item, seq) {
             const auto = document.getElementById('autoRename').checked;
             const ext = fileExt(item.file.name) || 'jpg';
             if (!auto) return item.file.name;
 
-            const rawDateValue = pickDateValue(item);
-            const normalizedDate = rawDateValue ? normalizeExifDate(rawDateValue) : '';
-            const ymd = normalizedDate ? normalizedDate.slice(0, 10).replace(/:/g, '') : '';
-            const camValue = pickCameraValue(item);
-            const cam = camValue ? compactCameraCode(camValue) : '';
+            const ymd = filenameDateCode(item);
+            const cam = pickCameraCodeValue(item);
             const filmValue = effectiveFilm(item);
-            const film = filmValue ? compactFilmCode(filmValue) : '';
+            const film = filmValue ? compactFilmCode(filmValue) : 'FILM';
             const prefix = $prefix() ? sanitizePart($prefix()) : '';
             const suffix = $suffix() ? sanitizePart($suffix()) : '';
             const seqPart = String(seq).padStart(3, '0');

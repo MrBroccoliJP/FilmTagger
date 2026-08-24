@@ -129,6 +129,7 @@ global g_cameraNames := [
     "Canon FTb",
     "Canon AF35-ML",
     "Canon Sure Shot Max",
+    "Canon Prima BF-8",
     "Nikon FM",
     "Nikon FM2",
     "Nikon FE",
@@ -153,6 +154,7 @@ global g_cameraMap := Map(
     "Canon AE-1",      "CAE1",
     "Canon A-1",       "CA1",
     "Canon AF35-ML",   "CAF35ML",
+    "Canon Prima BF-8", "CPBF8",
     "Olympus Mju II",  "OMJUII"
 )
 
