@@ -2702,9 +2702,9 @@
                 .map(b => String.fromCharCode(b))
                 .join('');
 
-            return header.startsWith('Exif  ')
+            return header.startsWith('Exif\u0000\u0000')
                 || header.startsWith('http://ns.adobe.com/xap/1.0/')
-                || header.startsWith('XMP ');
+                || header.startsWith('XMP\u0000');
         }
 
         async function stripJpegMetadataSegments(file) {
