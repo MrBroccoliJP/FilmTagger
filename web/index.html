@@ -2440,8 +2440,7 @@
             };
         }
         document.getElementById('saveHardwareSelected').addEventListener('click', function () {
-            const ok = stageSelected(hardwarePatch());
-            if (!ok) alert('Select an image first.');
+            const ok = stageChecked(hardwarePatch());
             if (ok) flashSaved(this);
         });
         document.getElementById('saveHardwareAll').addEventListener('click', function () {
@@ -2489,8 +2488,7 @@
             return ok;
         }
         document.getElementById('saveTemporalSelected').addEventListener('click', function () {
-            const ok = saveTemporal(this, stageSelected);
-            if (ok === false) alert('Select an image first.');
+            saveTemporal(this, stageChecked);
         });
         document.getElementById('saveTemporalAll').addEventListener('click', function () {
             saveTemporal(this, stageAll);
@@ -2505,8 +2503,7 @@
             return { gps: parts.join(' | ') || '—' };
         }
         document.getElementById('saveGPSSelected').addEventListener('click', function () {
-            const ok = stageSelected(gpsPatch());
-            if (!ok) alert('Select an image first.');
+            const ok = stageChecked(gpsPatch());
             if (ok) flashSaved(this);
         });
         document.getElementById('saveGPSAll').addEventListener('click', function () {
